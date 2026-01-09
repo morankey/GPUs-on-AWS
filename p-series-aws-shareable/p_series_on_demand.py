@@ -8,7 +8,18 @@ import boto3
 import sys
 import json
 import os
+import time
 from datetime import datetime
+
+
+def show_progress_bar(current, total, prefix="Progress", suffix="Complete", length=30):
+    """Display a progress bar"""
+    percent = ("{0:.0f}").format(100 * (current / float(total)))
+    filled_length = int(length * current // total)
+    bar = '█' * filled_length + '░' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}%', end='', flush=True)
+    if current == total:
+        print()  # New line when complete
 
 
 def get_terminal_width():
@@ -121,6 +132,9 @@ def get_on_demand_pricing(regions):
     
     pricing_data = {}
     
+    total_operations = len(regions) * len(p_series_instances)
+    current_operation = 0
+    
     for region in regions:
         if region not in region_mapping:
             continue
@@ -129,6 +143,8 @@ def get_on_demand_pricing(regions):
         pricing_data[region] = {}
         
         for instance_type in p_series_instances:
+            show_progress_bar(current_operation, total_operations, "Fetching pricing data", "")
+            
             try:
                 # Try with minimal filters first
                 response = pricing_client.get_products(
@@ -208,7 +224,12 @@ def get_on_demand_pricing(regions):
                     'price': 0.0,
                     'available': False
                 }
+            
+            current_operation += 1
         
+    # Clear progress bar line
+    print("\r" + " " * 80 + "\r", end="")
+    
     return pricing_data
 
 
@@ -344,9 +365,9 @@ def get_on_demand_analysis(regions=None):
             if instance_type in ["p4d.24xlarge", "p4de.24xlarge"]:
                 available_azs = get_available_azs_for_instance(region, instance_type)
                 if available_azs:
-                    # Show the best AZ (highest score) for on-demand - just AZ-ID
+                    # Show the best AZ (highest score) for on-demand - consistent format
                     best_az = available_azs[0]  # Already sorted by score descending
-                    best_az_info = f"Best: {best_az['az_id']} (score: {best_az['score']})"
+                    best_az_info = f"{best_az['az_name']} ({best_az['az_id']}) Score:{best_az['score']}"
                 else:
                     best_az_info = "AZ lookup failed"
             
@@ -442,7 +463,7 @@ def get_on_demand_summary(regions=None):
             available_azs = get_available_azs_for_instance(test_region, instance_type)
             if available_azs:
                 best_az = available_azs[0]
-                best_az_info = f"Best: {best_az['az_id']} (score: {best_az['score']})"
+                best_az_info = f"{best_az['az_name']} ({best_az['az_id']}) Score:{best_az['score']}"
             else:
                 best_az_info = "AZ lookup failed"
         
@@ -460,9 +481,6 @@ def get_on_demand_summary(regions=None):
 
 if __name__ == "__main__":
     try:
-        print("🚀 Starting P Series ON-DEMAND Analysis...")
-        print()
-        
         # Parse command line arguments properly
         args = sys.argv[1:]  # Get all arguments except script name
         
@@ -470,8 +488,6 @@ if __name__ == "__main__":
         regions = args if args else None
         
         get_on_demand_summary(regions)
-        
-        print("\n✅ ON-DEMAND Analysis Complete!")
         
     except KeyboardInterrupt:
         print("\n\n⚠️  Analysis interrupted by user")

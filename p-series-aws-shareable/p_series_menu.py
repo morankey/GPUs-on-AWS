@@ -26,10 +26,10 @@ def getch():
 def show_menu():
     """Display the main menu and get user choice with arrow key navigation"""
     options = [
-        ("Capacity Blocks (CB) - Reserved capacity pricing and availability", "a"),
-        ("Spot Instances - Dynamic spot pricing & placement", "b"),
-        ("On-Demand - Fixed pricing with guaranteed capacity", "c"),
-        ("All Options - Complete analysis (Spot + CB + On-Demand)", "d")
+        ("All Options (recommended) - Complete analysis (Spot + Capacity Blocks + On-Demand)", "a"),
+        ("Capacity Blocks - Reserved capacity pricing and availability", "b"),
+        ("Spot Instances - Dynamic spot pricing & placement", "c"),
+        ("On-Demand - Fixed pricing with guaranteed capacity", "d")
     ]
     
     selected = 0
@@ -78,9 +78,7 @@ def get_regions():
         ("us-west-2 (Oregon)", "us-west-2"),
         ("ap-northeast-1 (Tokyo)", "ap-northeast-1"),
         ("ap-northeast-2 (Seoul)", "ap-northeast-2"),
-        ("ap-south-1 (Mumbai)", "ap-south-1"),
-        ("All regions", "all"),
-        ("Custom (enter manually)", "custom")
+        ("ap-south-1 (Mumbai)", "ap-south-1")
     ]
     
     while True:
@@ -93,13 +91,15 @@ def get_regions():
             print(f"  {i+1}) {name}")
         
         print()
-        print("Enter your choice (1-10) or 'q' to quit:")
+        print("Enter your choice (1-8), 'b' to go back, or 'q' to quit:")
         
         try:
             user_input = input().strip()
             
             if user_input.lower() == 'q':
                 sys.exit(0)
+            elif user_input.lower() == 'b':
+                return 'back'  # Signal to go back to main menu
             elif user_input.isdigit():
                 num = int(user_input) - 1
                 if 0 <= num < len(options):
@@ -109,7 +109,7 @@ def get_regions():
                     print(f"Invalid choice. Please enter 1-{len(options)}")
                     input("Press Enter to continue...")
             else:
-                print("Invalid input. Please enter a number or 'q'")
+                print("Invalid input. Please enter a number, 'b' to go back, or 'q'")
                 input("Press Enter to continue...")
                 
         except (ValueError, KeyboardInterrupt):
@@ -120,13 +120,8 @@ def get_regions():
     
     # Handle the selected choice
     if choice == "multi":
-        return get_multi_region_selection(options[1:-2])  # Exclude multi, all, and custom options
-    elif choice == "all":
-        return ["us-east-1", "us-east-2", "us-west-1", "us-west-2", "ap-northeast-1", "ap-northeast-2", "ap-south-1"]
-    elif choice == "custom":
-        regions_input = input("Enter regions separated by commas (e.g., us-east-1,us-west-2): ").strip()
-        regions = [r.strip() for r in regions_input.split(',') if r.strip()]
-        return regions if regions else ["us-east-1", "us-east-2"]
+        result = get_multi_region_selection(options[1:])  # Exclude multi option
+        return result if result != 'back' else 'back'
     else:
         return [choice]
 
@@ -152,13 +147,15 @@ def get_multi_region_selection(region_options):
             print("No regions selected yet")
         
         print()
-        print("Enter numbers (e.g., 1,3,5) to toggle regions, 'done' to finish, or 'q' to quit:")
+        print("Enter numbers (e.g., 1,3,5) to toggle regions, 'done' to finish, 'b' to go back, or 'q' to quit:")
         
         try:
             user_input = input().strip().lower()
             
             if user_input == 'q':
                 sys.exit(0)
+            elif user_input == 'b':
+                return 'back'  # Signal to go back
             elif user_input == 'done':
                 if chosen:
                     return list(chosen)
@@ -190,9 +187,6 @@ def get_multi_region_selection(region_options):
 def run_script(script_name, regions=None):
     """Run a Python script and handle errors"""
     try:
-        print(f"\nRunning {script_name}...")
-        print("=" * 80)
-        
         # Pass regions as command line arguments if provided
         cmd = [sys.executable, script_name]
         if regions:
@@ -202,8 +196,6 @@ def run_script(script_name, regions=None):
                               capture_output=False, 
                               text=True, 
                               check=True)
-        print("=" * 80)
-        print(f"✓ {script_name} completed successfully")
         
     except subprocess.CalledProcessError as e:
         print(f"✗ Error running {script_name}")
@@ -226,27 +218,31 @@ def main():
             break
             
         elif choice == 'a':
-            print("🔍 Running Capacity Blocks Analysis...")
             regions = get_regions()
-            run_script("p_series_capacity_blocks.py", regions)
-            
-        elif choice == 'b':
-            print("🔍 Running Spot Analysis...")
-            regions = get_regions()
+            if regions == 'back':
+                continue  # Go back to main menu
             run_script("p_series_spot.py", regions)
-            
-        elif choice == 'c':
-            print("🔍 Running On-Demand Analysis...")
-            regions = get_regions()
+            print()  # Add space between outputs
+            run_script("p_series_capacity_blocks.py", regions)
+            print()  # Add space between outputs
             run_script("p_series_on_demand.py", regions)
             
-        elif choice == 'd':
-            print("🔍 Running Complete Analysis (Spot + Capacity Blocks + On-Demand)...")
+        elif choice == 'b':
             regions = get_regions()
-            run_script("p_series_spot.py", regions)
-            print("\n" + "="*80)
+            if regions == 'back':
+                continue  # Go back to main menu
             run_script("p_series_capacity_blocks.py", regions)
-            print("\n" + "="*80)
+            
+        elif choice == 'c':
+            regions = get_regions()
+            if regions == 'back':
+                continue  # Go back to main menu
+            run_script("p_series_spot.py", regions)
+            
+        elif choice == 'd':
+            regions = get_regions()
+            if regions == 'back':
+                continue  # Go back to main menu
             run_script("p_series_on_demand.py", regions)
         
         print("\n" + "="*60)

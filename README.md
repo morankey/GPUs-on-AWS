@@ -1,4 +1,3 @@
-[README.md](https://github.com/user-attachments/files/24532592/README.md)
 # P Series AWS GPU Instance Analysis Scripts - Short Term and Immediate Access
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
@@ -136,41 +135,61 @@ This analysis identifies the best availability zones for each P-series instance 
 PRICE-CAPACITY OPTIMIZED RECOMMENDATIONS (Best Value: High Score + Low Price)
 Regions: us-east-1, us-west-2
 ================================================================================
-Instance Type      GPU      Score  Price/Hour  AZ (AZ-ID)           Region    
---------------------------------------------------------------------------------
-p4d.24xlarge      8x A100    9     $8.2736     us-east-1a (use1-az1)  us-east-1
-p4de.24xlarge     8x A100    8     $9.1584     us-east-1b (use1-az2)  us-east-1
-p5.48xlarge       8x H100    7     $32.7726    us-west-2a (usw2-az1)  us-west-2
-p5e.48xlarge      8x H200    6     $40.3200    us-east-1c (use1-az3)  us-east-1
-p5en.48xlarge     8x H200    5     $45.1200    us-west-2b (usw2-az2)  us-west-2
+
+US-EAST-1
+---------
+Instance Type      GPU          Score  Price/Hour   AZ (AZ-ID)          
+------------------------------------------------------------------------
+p4d.24xlarge       8x A100      9      $8.2736      us-east-1a (use1-az1)
+p4de.24xlarge      8x A100      8      $9.1584      us-east-1b (use1-az2)
+p5.48xlarge        8x H100      7      $32.7726     us-east-1c (use1-az3)
+p5e.48xlarge       8x H200      6      $40.3200     us-east-1c (use1-az3)
+p5en.48xlarge      8x H200      5      $45.1200     us-east-1d (use1-az6)
+
+US-WEST-2
+---------
+Instance Type      GPU          Score  Price/Hour   AZ (AZ-ID)          
+------------------------------------------------------------------------
+p4d.24xlarge       8x A100      8      $8.4521      us-west-2a (usw2-az1)
+p4de.24xlarge      8x A100      7      $9.3847      us-west-2b (usw2-az2)
+p5.48xlarge        8x H100      6      $33.1205     us-west-2a (usw2-az1)
+p5e.48xlarge       8x H200      5      $41.0800     us-west-2c (usw2-az3)
+p5en.48xlarge      8x H200      4      $46.2400     us-west-2b (usw2-az2)
 ```
 
 #### Capacity Blocks - Immediate Availability
-Shows reserved capacity blocks available for immediate booking with guaranteed availability. Each entry shows the specific AZ-ID where capacity blocks are available, the exact start time, duration in hours, and upfront cost. This gives you the best zones to reserve guaranteed GPU capacity for your specific time requirements.
+Shows reserved capacity blocks available for immediate booking with guaranteed availability. Each entry shows the specific AZ-ID where capacity blocks are available, the exact start time, duration in hours, and total upfront cost. This gives you the best zones to reserve guaranteed GPU capacity for your specific time requirements.
 
 ```
 CAPACITY BLOCKS AVAILABILITY & PRICING (A100-B300 GPUs)
 Regions: us-east-1, us-west-2 - Immediate Availability Focus
 ================================================================================
-Region       Instance Type      GPU          Available  Start Date           Duration  Upfront Fee  AZ (AZ-ID)        
---------------------------------------------------------------------------------
-us-east-1    p4d.24xlarge       8x A100      Yes        Immediately Available 20hrs     $245         us-east-1d (use1-az6)
-             p4de.24xlarge      8x A100      Yes        Immediately Available 20hrs     $306         us-east-1d (use1-az6)
-             p5.4xlarge         1x H100      Yes        Immediately Available 20hrs     $82          us-east-1f (use1-az5)
-             p5.48xlarge        8x H100      Yes        2026-01-10 11:30      24hrs     $755         us-east-1f (use1-az5)
-             p5e.48xlarge       8x H200      No         N/A                    N/A       N/A          N/A
-             p5en.48xlarge      8x H200      Yes        2026-01-14 11:30      24hrs     $999         us-east-1b (use1-az2)
-             p6-b200.48xlarge   8x B200      Yes        Immediately Available 20hrs     $1551        us-east-1d (use1-az6)
-             p6-b300.48xlarge   8x B300      No         N/A                    N/A       N/A          N/A
 
-us-west-2    p4d.24xlarge       8x A100      Yes        Immediately Available 20hrs     $244         us-west-2a (usw2-az2)
-             p4de.24xlarge      8x A100      Yes        Immediately Available 20hrs     $306         us-west-2a (usw2-az2)
-             p5.4xlarge         1x H100      Yes        2026-01-13 11:30      24hrs     $94          us-west-2c (usw2-az3)
-             p5.48xlarge        8x H100      Yes        Immediately Available 20hrs     $652         us-west-2a (usw2-az2)
-             p5e.48xlarge       8x H200      Yes        Immediately Available 20hrs     $825         us-west-2c (usw2-az3)
-             p5en.48xlarge      8x H200      No         N/A                    N/A       N/A          N/A
-             p6-b200.48xlarge   8x B200      Yes        Immediately Available 20hrs     $1550        us-west-2d (usw2-az4)
-             p6-b300.48xlarge   8x B300      Yes        Immediately Available 20hrs     $1938        us-west-2a (usw2-az2)
+US-EAST-1
+---------
+Instance Type      GPU          Available  Start Date           Duration  Total Rate   AZ (AZ-ID)        
+--------------------------------------------------------------------------------------------------------
+p4d.24xlarge       8x A100      Yes        Immediately Available 20hrs     ($245)       us-east-1d (use1-az6)
+p4de.24xlarge      8x A100      Yes        Immediately Available 20hrs     ($306)       us-east-1d (use1-az6)
+p5.4xlarge         1x H100      Yes        Immediately Available 20hrs     ($82)        us-east-1f (use1-az5)
+p5.48xlarge        8x H100      Yes        2026-01-10 11:30      24hrs     ($755)       us-east-1f (use1-az5)
+p5e.48xlarge       8x H200      No         N/A                    N/A       N/A          N/A
+p5en.48xlarge      8x H200      Yes        2026-01-14 11:30      24hrs     ($999)       us-east-1b (use1-az2)
+p6-b200.48xlarge   8x B200      Yes        Immediately Available 20hrs     ($1551)      us-east-1d (use1-az6)
+p6-b300.48xlarge   8x B300      No         N/A                    N/A       N/A          N/A
+
+US-WEST-2
+---------
+Instance Type      GPU          Available  Start Date           Duration  Total Rate   AZ (AZ-ID)        
+--------------------------------------------------------------------------------------------------------
+p4d.24xlarge       8x A100      Yes        Immediately Available 20hrs     ($244)       us-west-2a (usw2-az2)
+p4de.24xlarge      8x A100      Yes        Immediately Available 20hrs     ($306)       us-west-2a (usw2-az2)
+p5.4xlarge         1x H100      Yes        2026-01-13 11:30      24hrs     ($94)        us-west-2c (usw2-az3)
+p5.48xlarge        8x H100      Yes        Immediately Available 20hrs     ($652)       us-west-2a (usw2-az2)
+p5e.48xlarge       8x H200      Yes        Immediately Available 20hrs     ($825)       us-west-2c (usw2-az3)
+p5en.48xlarge      8x H200      No         N/A                    N/A       N/A          N/A
+p6-b200.48xlarge   8x B200      Yes        Immediately Available 20hrs     ($1550)      us-west-2d (usw2-az4)
+p6-b300.48xlarge   8x B300      Yes        Immediately Available 20hrs     ($1938)      us-west-2a (usw2-az2)
 ```
 
 #### On-Demand - Best Available Options

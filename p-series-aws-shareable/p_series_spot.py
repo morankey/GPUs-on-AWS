@@ -7,6 +7,7 @@ Comprehensive spot pricing and placement analysis for P-series GPU instances
 import boto3
 import sys
 import os
+import time
 from datetime import datetime, timedelta, timezone
 from collections import defaultdict
 
@@ -29,6 +30,16 @@ def format_table_width():
     else:
         # For narrow terminals, use actual width minus some padding
         return min(terminal_width - 5, 75), "compact"
+
+
+def show_progress_bar(current, total, prefix="Progress", suffix="Complete", length=30):
+    """Display a progress bar"""
+    percent = ("{0:.0f}").format(100 * (current / float(total)))
+    filled_length = int(length * current // total)
+    bar = '█' * filled_length + '░' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}%', end='', flush=True)
+    if current == total:
+        print()  # New line when complete
 
 
 def get_gpu_info(instance_type):
@@ -76,20 +87,28 @@ def get_price_and_score_summary(regions=None):
     print(f"PRICE-CAPACITY OPTIMIZED RECOMMENDATIONS (Best Value: High Score + Low Price)")
     print(f"Regions: {', '.join(regions)}")
     print("=" * 84)
-    print(f"{'Instance Type':<18} {'GPU':<12} {'Score':<6} {'Price/Hour':<12} {'AZ (AZ-ID)':<20} {'Region':<12}")
-    print("-" * 84)
     
-    # Collect all data with combined price and score info
-    combined_data = {}  # instance_type -> list of {price, score, az, region, value_ratio}
+    # Collect all data with combined price and score info organized by region
+    combined_data = {}  # region -> instance_type -> list of {price, score, az, value_ratio}
+    
+    total_operations = len(regions) * len(p_series_instances) * 2  # 2 operations per instance per region
+    current_operation = 0
     
     for region in regions:
+        combined_data[region] = {}
         client = boto3.client("ec2", region_name=region)
         az_mapping = get_az_mapping(region)
         id_to_name = {az_id: az_name for az_name, az_id in az_mapping.items()}
         
+        # Initialize data structure for this region
+        for instance_type in p_series_instances:
+            combined_data[region][instance_type] = []
+        
         # Get prices by AZ
         prices_by_az = {}
         try:
+            show_progress_bar(current_operation, total_operations, "Analyzing spot data", "")
+            
             price_response = client.describe_spot_price_history(
                 InstanceTypes=p_series_instances,
                 ProductDescriptions=["Linux/UNIX"],
@@ -107,11 +126,15 @@ def get_price_and_score_summary(regions=None):
                 prices_by_az[instance_type][az_name] = price
                 
         except Exception as e:
-            continue
+            pass
+        
+        current_operation += 1
         
         # Get scores and combine with prices
         for instance_type in p_series_instances:
             try:
+                show_progress_bar(current_operation, total_operations, "Analyzing spot data", "")
+                
                 score_response = client.get_spot_placement_scores(
                     InstanceTypes=[instance_type],
                     TargetCapacity=1,
@@ -119,9 +142,6 @@ def get_price_and_score_summary(regions=None):
                     RegionNames=[region],
                     SingleAvailabilityZone=True
                 )
-                
-                if instance_type not in combined_data:
-                    combined_data[instance_type] = []
                 
                 for score_info in score_response.get("SpotPlacementScores", []):
                     az_id = score_info.get("AvailabilityZoneId", "")
@@ -136,53 +156,60 @@ def get_price_and_score_summary(regions=None):
                         # Calculate value ratio: score/price (higher is better)
                         value_ratio = score / price if price > 0 else 0
                         
-                        combined_data[instance_type].append({
+                        combined_data[region][instance_type].append({
                             'price': price,
                             'score': score,
                             'az': az_name,
                             'az_display': f"{az_name} ({az_id})",
-                            'region': region,
                             'value_ratio': value_ratio
                         })
                     
             except Exception as e:
-                continue
-        
-    # Find best value (highest score/price ratio) for each instance type
-    best_values = {}
+                pass
+            
+            current_operation += 1
     
-    for instance_type, options in combined_data.items():
-        if options:
-            # Sort by value ratio (score/price) descending, then by score descending as tiebreaker
-            best_option = max(options, key=lambda x: (x['value_ratio'], x['score']))
-            best_values[instance_type] = best_option
+    # Clear progress bar line
+    print("\r" + " " * 80 + "\r", end="")
     
-    # Display results
-    for instance_type in sorted(p_series_instances):
-        gpu_info = get_gpu_info(instance_type)
+    # Display results by region
+    for region in regions:
+        print(f"\n{region.upper()}")
+        print("-" * len(region))
+        print(f"{'Instance Type':<18} {'GPU':<12} {'Score':<6} {'Price/Hour':<12} {'AZ (AZ-ID)':<20}")
+        print("-" * 72)
         
-        if instance_type in best_values:
-            best = best_values[instance_type]
-            price_str = f"${best['price']:.4f}"
-            az_display = best['az_display']
-            score_str = str(best['score'])
-            region = best['region']
-        else:
-            price_str = "N/A"
-            az_display = "N/A"
-            score_str = "N/A"
-            region = "N/A"
+        # Find best value (highest score/price ratio) for each instance type in this region
+        best_values = {}
         
-        print(f"{instance_type:<18} {gpu_info:<12} {score_str:<6} {price_str:<12} {az_display:<20} {region:<12}")
+        for instance_type, options in combined_data[region].items():
+            if options:
+                # Sort by value ratio (score/price) descending, then by score descending as tiebreaker
+                best_option = max(options, key=lambda x: (x['value_ratio'], x['score']))
+                best_values[instance_type] = best_option
+        
+        # Display results for this region
+        for instance_type in sorted(p_series_instances):
+            gpu_info = get_gpu_info(instance_type)
+            
+            if instance_type in best_values:
+                best = best_values[instance_type]
+                price_str = f"${best['price']:.4f}"
+                az_display = best['az_display']
+                score_str = str(best['score'])
+            else:
+                price_str = "N/A"
+                az_display = "N/A"
+                score_str = "N/A"
+            
+            print(f"{instance_type:<18} {gpu_info:<12} {score_str:<6} {price_str:<12} {az_display:<20}")
     
-    print("\nRecommendations prioritize high availability at competitive prices")
+    print("\n" + "=" * 84)
+    print("Recommendations prioritize high availability at competitive prices")
 
 
 if __name__ == "__main__":
     try:
-        print("🚀 Starting P Series SPOT Analysis...")
-        print()
-        
         # Parse command line arguments properly
         args = sys.argv[1:]  # Get all arguments except script name
         
@@ -190,8 +217,6 @@ if __name__ == "__main__":
         regions = args if args else None
         
         get_price_and_score_summary(regions)
-        
-        print("\n✅ SPOT Analysis Complete!")
         
     except Exception as e:
         print(f"❌ Error: {e}")

@@ -7,7 +7,18 @@ Capacity block availability and pricing analysis for P-series GPU instances
 import boto3
 import sys
 import os
+import time
 from datetime import datetime, timedelta, timezone
+
+
+def show_progress_bar(current, total, prefix="Progress", suffix="Complete", length=30):
+    """Display a progress bar"""
+    percent = ("{0:.0f}").format(100 * (current / float(total)))
+    filled_length = int(length * current // total)
+    bar = '█' * filled_length + '░' * (length - filled_length)
+    print(f'\r{prefix} |{bar}| {percent}%', end='', flush=True)
+    if current == total:
+        print()  # New line when complete
 
 
 def get_terminal_width():
@@ -68,7 +79,12 @@ def get_capacity_block_availability(region, instance_types):
     # Focus on immediate availability - check shorter durations first
     duration_options = [1, 24, 168]  # 1 hour, 1 day, 1 week
     
+    total_operations = len(instance_types)
+    current_operation = 0
+    
     for instance_type in instance_types:
+        show_progress_bar(current_operation, total_operations, "Analyzing capacity blocks", "")
+        
         best_offering = None
         
         # Try different durations, prioritizing immediate availability
@@ -106,6 +122,10 @@ def get_capacity_block_availability(region, instance_types):
                 continue
         
         capacity_blocks[instance_type] = best_offering
+        current_operation += 1
+    
+    # Clear progress bar line
+    print("\r" + " " * 80 + "\r", end="")
     
     return capacity_blocks
 
@@ -130,24 +150,27 @@ def get_capacity_block_summary(regions=None):
     print(f"Regions: {', '.join(regions)} - Immediate Availability Focus")
     print("=" * table_width)
     
-    if format_type == "full":
-        print(f"{'Region':<10} {'Instance Type':<18} {'GPU':<10} {'Available':<9} {'Start Date':<16} {'Duration':<8} {'Upfront Fee':<11} {'AZ (AZ-ID)':<20}")
-    elif format_type == "medium":
-        print(f"{'Region':<9} {'Instance':<16} {'GPU':<9} {'Avail':<6} {'Start Date':<16} {'Dur':<6} {'Fee':<9} {'AZ (AZ-ID)':<16}")
-    else:
-        print(f"{'Region':<8} {'Instance':<12} {'GPU':<8} {'Avail':<5} {'Start Date':<16} {'Dur':<5} {'Fee':<8} {'AZ-ID':<8}")
-    
-    print("-" * table_width)
-    
     any_blocks_found = False
     
     for region in regions:
         try:
             capacity_blocks = get_capacity_block_availability(region, p_series_instances)
             
-            region_printed = False
+            # Print region header
+            print(f"\n{region.upper()}")
+            print("-" * len(region))
+            
+            # Print table headers for this region
+            if format_type == "full":
+                print(f"{'Instance Type':<18} {'GPU':<10} {'Available':<9} {'Start Date':<16} {'Duration':<8} {'Total Rate':<11} {'AZ (AZ-ID)':<20}")
+            elif format_type == "medium":
+                print(f"{'Instance':<16} {'GPU':<9} {'Avail':<6} {'Start Date':<16} {'Dur':<6} {'Total Rate':<9} {'AZ (AZ-ID)':<16}")
+            else:
+                print(f"{'Instance':<12} {'GPU':<8} {'Avail':<5} {'Start Date':<16} {'Dur':<5} {'Total Rate':<8} {'AZ-ID':<8}")
+            
+            print("-" * (table_width - 10))  # Adjust for removed region column
+            
             for instance_type in p_series_instances:
-                region_col = region if not region_printed else ""
                 gpu_info = get_gpu_info(instance_type)
                 
                 block_info = capacity_blocks.get(instance_type)
@@ -163,7 +186,7 @@ def get_capacity_block_summary(regions=None):
                         start_date = block_info['start_date'].strftime('%Y-%m-%d %H:%M')
                     
                     duration = f"{block_info['duration_hours']}hrs"
-                    upfront_fee = f"${block_info['upfront_fee']}"
+                    upfront_fee = f"(${block_info['upfront_fee']})"
                     az_display = block_info['az_display']
                     available = "Yes"
                     any_blocks_found = True
@@ -176,12 +199,12 @@ def get_capacity_block_summary(regions=None):
                 
                 # Format output based on table width
                 if format_type == "full":
-                    print(f"{region_col:<10} {instance_type:<18} {gpu_info:<10} {available:<9} {start_date:<16} {duration:<8} {upfront_fee:<11} {az_display:<20}")
+                    print(f"{instance_type:<18} {gpu_info:<10} {available:<9} {start_date:<16} {duration:<8} {upfront_fee:<11} {az_display:<20}")
                 elif format_type == "medium":
                     # Truncate long fields for medium width
                     short_start = start_date[:16] + "..." if len(start_date) > 16 else start_date
                     short_az = az_display[:16] + "..." if len(az_display) > 16 else az_display
-                    print(f"{region_col:<9} {instance_type:<16} {gpu_info:<9} {available:<6} {short_start:<16} {duration:<6} {upfront_fee:<9} {short_az:<16}")
+                    print(f"{instance_type:<16} {gpu_info:<9} {available:<6} {short_start:<16} {duration:<6} {upfront_fee:<9} {short_az:<16}")
                 else:
                     # Compact format for narrow terminals
                     if start_date == "Immediately Available":
@@ -203,14 +226,14 @@ def get_capacity_block_summary(regions=None):
                     # Truncate instance type for compact display
                     compact_instance = instance_type[:12]
                     
-                    print(f"{region_col:<8} {compact_instance:<12} {gpu_info:<8} {available:<5} {compact_start:<16} {duration:<5} {upfront_fee:<8} {compact_az:<8}")
-                
-                region_printed = True
+                    print(f"{compact_instance:<12} {gpu_info:<8} {available:<5} {compact_start:<16} {duration:<5} {upfront_fee:<8} {compact_az:<8}")
                 
         except Exception as e:
-            continue
+            print(f"\n{region.upper()}")
+            print("-" * len(region))
+            print(f"Error checking capacity blocks: {e}")
     
-    print("-" * table_width)
+    print("\n" + "=" * table_width)
     if any_blocks_found:
         print("Note: Showing earliest available CAPACITY BLOCKS within next 90 days")
     else:
@@ -221,9 +244,6 @@ def get_capacity_block_summary(regions=None):
 
 if __name__ == "__main__":
     try:
-        print("🚀 Starting P Series CAPACITY BLOCKS Analysis...")
-        print()
-        
         # Parse command line arguments properly
         args = sys.argv[1:]  # Get all arguments except script name
         
@@ -231,8 +251,6 @@ if __name__ == "__main__":
         regions = args if args else None
         
         get_capacity_block_summary(regions)
-        
-        print("\n✅ CAPACITY BLOCKS Analysis Complete!")
         
     except Exception as e:
         print(f"❌ Error: {e}")
