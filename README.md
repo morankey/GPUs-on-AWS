@@ -1,25 +1,23 @@
-# P Series AWS GPU Instance Analysis Scripts - Short Term and Immediate Access
+# P-Series Immediate Short Term Single Instance Analyzer
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![AWS](https://img.shields.io/badge/AWS-EC2-orange.svg)](https://aws.amazon.com/ec2/)
 
-## 🎯 Summary
+## Summary
 
-**Teams want immediate, single instance, short-term access to high-end GPU compute for adhoc jobs AI and ML training jobs. This simplifies the process of finding what Nvidia P-Series instances are available on AWS at this moment in time.**
+**Teams want immediate, single instance, short-term access to high-end GPU compute for adhoc AI and ML training jobs. This tool helps you find your P-series at the earliest date available by analyzing Nvidia P-Series instances on AWS right now.**
 
-AWS offers P-series GPU instances (A100, H100, H200, B200, B300) through multiple procurement options, each with different availability, pricing, and commitment models:
+**Single Instance, Immediate Access, <1 Day Duration**
 
-- **Spot Instances**: Up to 90% cost savings but can be interrupted
-- **Capacity Blocks**: Reserved capacity with guaranteed availability for specific durations. This option is for reserving instances similar to a hotel booking - usually 24 hours but can be less. 
-- **On-Demand**: Immediate availability with no commitment (not available for all p-instances)
+This tool analyzes your selected regions and shows:
 
-**Our Solution**: This toolkit provides comprehensive analysis across all three procurement methods for immediate availability, enabling customers to make informed decisions based on real-time availability, pricing, and placement optimization.
+1. **Capacity Blocks**: Best offering at the earliest date for the lowest price across the regions you select
+2. **Spot Instances**: Best AZ to try spot for each instance based upon spot placement scores  
+3. **On-Demand**: Uses spot scores to estimate likelihood of getting on-demand and shows highest opportunity AZs
 
----
+**Important**: This tool provides analysis only - it does not guarantee availability or procure instances. You must still launch/purchase instances through AWS console, CLI, or API.
 
-A collection of Python scripts for analyzing AWS P-series GPU instance availability, pricing, and placement across spot instances, capacity blocks, and on-demand instances. These scripts focus on immediate availability for **quantity of 1 for one day or less**.
-
-## 🚀 Quick Start - Understanding Immediate P-Series Availability
+## Quick Start - Understanding Immediate P-Series Availability
 
 ### Prerequisites
 
@@ -28,6 +26,11 @@ A collection of Python scripts for analyzing AWS P-series GPU instance availabil
 - boto3 library
 - EC2 permissions for spot pricing, placement scores, availability zones, and capacity blocks
 - Pricing API permissions
+- **Sufficient AWS quotas** (see quota requirements below)
+
+#### AWS Quota Requirements
+
+**IMPORTANT**: P-series instances require quota increases from AWS default limits. New accounts start with 0 vCPU quotas for P-series instances. See [Quota Requirements](#quota-requirements) section below for detailed requirements and instructions.
 
 #### AWS APIs Used
 These scripts utilize the following AWS APIs to gather real-time data:
@@ -88,7 +91,7 @@ python --version  # Should show Python 3.10+
 pip list          # Should show boto3 and dependencies
 ```
 
-## 🚀 Running the Analysis
+## Running the Analysis
 
 **Important**: Make sure your virtual environment is activated before running the scripts:
 ```bash
@@ -112,12 +115,19 @@ python p_series_menu.py
    - **Capacity blocks** for guaranteed immediate availability 
    - **On-demand pricing** for maximum flexibility
 
-4. **Compare results** across all three procurement methods to find the best fit for your specific needs:
-   - **Lowest cost**: Look for spot instances with high placement scores
-   - **Guaranteed capacity**: Compare capacity blocks vs on-demand pricing
-   - **Best availability**: Identify regions with immediate capacity blocks or high spot scores
+This complete analysis provides everything needed to make an informed decision about GPU instance procurement for your short-term workloads:
 
-This full analysis provides everything needed to make an informed decision about GPU instance procurement for your short-term workloads.
+**Spot Analysis**: Shows the single best AZ per instance type across all regions. Code selects highest placement score (availability indicator), with price as tiebreaker.
+
+**Important**: Spot recommendations prioritize highest availability scores (1-10 scale) first, then competitive pricing. Higher scores indicate better immediate availability for spot instance fulfillment.
+
+**Capacity Blocks**: Shows earliest available 24-hour blocks across all regions. Code picks most immediate availability, with shorter duration as tiebreaker.
+
+**Important**: Capacity blocks are sorted by earliest start time first, then shortest duration, then lowest price. Blocks starting within 1 hour are marked as "Immediate".
+
+**On-Demand**: Shows highest availability option per instance type across all regions. Code selects highest spot score (availability indicator), with lowest price as tiebreaker.
+
+**Important**: On-demand availability uses spot placement scores as a proxy for capacity availability. Most H100+ instances (p5, p6) are only available via spot and capacity blocks - not on-demand.
 
 **When finished**, deactivate the virtual environment:
 ```bash
@@ -128,89 +138,50 @@ deactivate
 
 After running the complete analysis, you'll see results like these:
 
-#### Spot Analysis - Price-Capacity Optimized
-This analysis identifies the best availability zones for each P-series instance type using [AWS Spot Placement Scores](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-placement-score.html) (1-10 scale). Higher scores indicate better capacity availability and lower interruption risk. The AZ-ID shows the optimal zone for launching each instance type.
+#### Complete Analysis Output (All Options)
+When you select "All Options - Complete analysis" from the menu, you get comprehensive results across all three procurement methods:
 
 ```
-PRICE-CAPACITY OPTIMIZED RECOMMENDATIONS (Best Value: High Score + Low Price)
-Regions: us-east-1, us-west-2
-================================================================================
+BEST SPOT OPTIONS ACROSS REGIONS (Highest Score + Competitive Price)
+Regions: us-east-1, us-east-2
+====================================================================================
+Instance           GPU          Best Score   Price/Hour   Region       AZ (AZ-ID)          
+------------------------------------------------------------------------------------
+p4d.24xlarge       8x A100      9            $8.2736      us-east-1    1a (use1-az1)      
+p4de.24xlarge      8x A100      8            $9.1584      us-east-1    1b (use1-az2)      
+p5.48xlarge        8x H100      7            $32.7726     us-east-1    1c (use1-az3)      
+p5e.48xlarge       8x H200      6            $40.3200     us-east-1    1c (use1-az3)      
+p5en.48xlarge      8x H200      5            $45.1200     us-east-1    1d (use1-az6)      
 
-US-EAST-1
----------
-Instance Type      GPU          Score  Price/Hour   AZ (AZ-ID)          
-------------------------------------------------------------------------
-p4d.24xlarge       8x A100      9      $8.2736      us-east-1a (use1-az1)
-p4de.24xlarge      8x A100      8      $9.1584      us-east-1b (use1-az2)
-p5.48xlarge        8x H100      7      $32.7726     us-east-1c (use1-az3)
-p5e.48xlarge       8x H200      6      $40.3200     us-east-1c (use1-az3)
-p5en.48xlarge      8x H200      5      $45.1200     us-east-1d (use1-az6)
+BEST CAPACITY BLOCKS ACROSS REGIONS (Soonest Start Times)
+Regions: us-east-1, us-east-2 - Within 7 Days
+====================================================================================
+Instance           GPU      Available Start Date           Duration Total Cost Region       AZ       Offering ID 
+-------------------------------------------------------------------------------------------------------------------
+p4d.24xlarge       8x A100  Yes       2026-01-11 06:30 AM EST 24hrs    ($283)     us-east-1    1d       cb-0ecb45dda935ff136
+p4de.24xlarge      8x A100  Yes       2026-01-11 06:30 AM EST 24hrs    ($354)     us-east-1    1d       cb-0871d34d9dc094dea
+p5.4xlarge         1x H100  Yes       2026-01-11 06:30 AM EST 24hrs    ($94)      us-east-1    1f       cb-06bfeb47a343d237b
+p5.48xlarge        8x H100  Yes       2026-01-14 06:30 AM EST 24hrs    ($755)     us-east-1    1f       cb-0f4351b051663609b
+p5e.48xlarge       8x H200  No        N/A                  N/A      N/A        No availability N/A      N/A            
+p5en.48xlarge      8x H200  Yes       2026-01-14 06:30 AM EST 24hrs    ($999)     us-east-1    1b       cb-0aba0f548f5580de2
+p6-b200.48xlarge   8x B200  Yes       2026-01-11 06:30 AM EST 24hrs    ($1797)    us-east-1    1d       cb-025724580902276b8
+p6-b300.48xlarge   8x B300  No        N/A                  N/A      N/A        No availability N/A      N/A            
 
-US-WEST-2
----------
-Instance Type      GPU          Score  Price/Hour   AZ (AZ-ID)          
-------------------------------------------------------------------------
-p4d.24xlarge       8x A100      8      $8.4521      us-west-2a (usw2-az1)
-p4de.24xlarge      8x A100      7      $9.3847      us-west-2b (usw2-az2)
-p5.48xlarge        8x H100      6      $33.1205     us-west-2a (usw2-az1)
-p5e.48xlarge       8x H200      5      $41.0800     us-west-2c (usw2-az3)
-p5en.48xlarge      8x H200      4      $46.2400     us-west-2b (usw2-az2)
+BEST ON-DEMAND OPTIONS (Highest Availability + Competitive Price)
+====================================================================================
+Instance           GPU          Best Price   Region       Best AZ (AZ-ID) & Score       
+------------------------------------------------------------------------------------
+p4d.24xlarge       8x A100      $21.9576     us-east-2    2b (use2-az2) Score:9         
+p4de.24xlarge      8x A100      $27.4471     us-east-1    1d (use1-az6) Score:9         
+p5.4xlarge         1x H100      N/A          Spot & CB Only N/A                           
+p5.48xlarge        8x H100      N/A          Spot & CB Only N/A                           
+p5e.48xlarge       8x H200      N/A          Spot & CB Only N/A                           
+p5en.48xlarge      8x H200      N/A          Spot & CB Only N/A                           
+p6-b200.48xlarge   8x B200      N/A          Spot & CB Only N/A                           
+p6-b300.48xlarge   8x B300      N/A          Spot & CB Only N/A                           
 ```
 
-#### Capacity Blocks - Immediate Availability
-Shows reserved capacity blocks available for immediate booking with guaranteed availability. Each entry shows the specific AZ-ID where capacity blocks are available, the exact start time, duration in hours, and total upfront cost. This gives you the best zones to reserve guaranteed GPU capacity for your specific time requirements.
-
-```
-CAPACITY BLOCKS AVAILABILITY & PRICING (A100-B300 GPUs)
-Regions: us-east-1, us-west-2 - Immediate Availability Focus
-================================================================================
-
-US-EAST-1
----------
-Instance Type      GPU          Available  Start Date           Duration  Total Rate   AZ (AZ-ID)        
---------------------------------------------------------------------------------------------------------
-p4d.24xlarge       8x A100      Yes        Immediately Available 20hrs     ($245)       us-east-1d (use1-az6)
-p4de.24xlarge      8x A100      Yes        Immediately Available 20hrs     ($306)       us-east-1d (use1-az6)
-p5.4xlarge         1x H100      Yes        Immediately Available 20hrs     ($82)        us-east-1f (use1-az5)
-p5.48xlarge        8x H100      Yes        2026-01-10 11:30      24hrs     ($755)       us-east-1f (use1-az5)
-p5e.48xlarge       8x H200      No         N/A                    N/A       N/A          N/A
-p5en.48xlarge      8x H200      Yes        2026-01-14 11:30      24hrs     ($999)       us-east-1b (use1-az2)
-p6-b200.48xlarge   8x B200      Yes        Immediately Available 20hrs     ($1551)      us-east-1d (use1-az6)
-p6-b300.48xlarge   8x B300      No         N/A                    N/A       N/A          N/A
-
-US-WEST-2
----------
-Instance Type      GPU          Available  Start Date           Duration  Total Rate   AZ (AZ-ID)        
---------------------------------------------------------------------------------------------------------
-p4d.24xlarge       8x A100      Yes        Immediately Available 20hrs     ($244)       us-west-2a (usw2-az2)
-p4de.24xlarge      8x A100      Yes        Immediately Available 20hrs     ($306)       us-west-2a (usw2-az2)
-p5.4xlarge         1x H100      Yes        2026-01-13 11:30      24hrs     ($94)        us-west-2c (usw2-az3)
-p5.48xlarge        8x H100      Yes        Immediately Available 20hrs     ($652)       us-west-2a (usw2-az2)
-p5e.48xlarge       8x H200      Yes        Immediately Available 20hrs     ($825)       us-west-2c (usw2-az3)
-p5en.48xlarge      8x H200      No         N/A                    N/A       N/A          N/A
-p6-b200.48xlarge   8x B200      Yes        Immediately Available 20hrs     ($1550)      us-west-2d (usw2-az4)
-p6-b300.48xlarge   8x B300      Yes        Immediately Available 20hrs     ($1938)      us-west-2a (usw2-az2)
-```
-
-#### On-Demand - Best Available Options
-Displays the lowest-priced on-demand instances across regions with optimal availability zone recommendations. The "Best AZ" shows the specific AZ-ID with the highest [spot placement score](https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/spot-placement-score.html) (1-10 scale). We use spot placement scores as an indicator of on-demand capacity availability since spot and on-demand instances share the same underlying capacity pools - higher spot scores typically indicate better on-demand availability and launch success rates in that zone.
-
-```
-BEST ON-DEMAND OPTIONS (Lowest Price + Available)
-================================================================================
-Instance           GPU      Best Price   Region       Best AZ (AZ-ID) & Score                    
---------------------------------------------------------------------------------
-p4d.24xlarge      8x A100   $21.9576     us-east-2    Best: use2-az1 (score: 9)
-p4de.24xlarge     8x A100   $27.4471     us-east-1    Best: use1-az6 (score: 9)
-p5.4xlarge        1x H100   N/A          Spot & CB Only  N/A
-p5.48xlarge       8x H100   N/A          Spot & CB Only  N/A
-p5e.48xlarge      8x H200   N/A          Spot & CB Only  N/A
-p5en.48xlarge     8x H200   N/A          Spot & CB Only  N/A
-p6-b200.48xlarge  8x B200   N/A          Spot & CB Only  N/A
-p6-b300.48xlarge  8x B300   N/A          Spot & CB Only  N/A
-```
-
-## 🖥️ Supported Instance Types
+## Supported Instance Types
 
 | Instance Type | GPU Type | GPU Count | GPU Memory | System Memory | CPU | Instance Store | Use Case |
 |---------------|----------|-----------|------------|---------------|-----|----------------|----------|
@@ -223,7 +194,7 @@ p6-b300.48xlarge  8x B300   N/A          Spot & CB Only  N/A
 | p6-b200.48xlarge | 8x B200 | 8 | 192GB each (1536GB total) | 2048 GB | Intel Xeon Emerald Rapids | 8 x 3800 GB NVMe SSD | Next-gen AI Workloads |
 | p6-b300.48xlarge | 8x B300 | 8 | 192GB each (1536GB total) | 4096 GB | Intel Xeon Emerald Rapids | 8 x 3800 GB NVMe SSD | Next-gen AI Workloads |
 
-## 🌍 Supported Regions
+## Supported Regions
 
 - us-east-1 (N. Virginia)
 - us-east-2 (Ohio)
@@ -235,10 +206,52 @@ p6-b300.48xlarge  8x B300   N/A          Spot & CB Only  N/A
 
 **Note**: Most H100-B300 instances (p5, p5e, p5en, p6-b200, p6-b300) are available via spot & capacity blocks only. **On-demand is primarily available for A100 instances (p4d, p4de)**.
 
-## ⚠️ Disclaimer
+## Quota Requirements
+
+**IMPORTANT**: P-series instances require quota increases from AWS default limits. You must request quota increases before attempting to launch instances.
+
+### Default P-Series Quotas (New Accounts)
+- **On-Demand P instances**: 0 vCPUs (must request increase)
+- **Spot P4/P3/P2 instances**: 0 vCPUs (must request increase) 
+- **Spot P5 instances**: 0 vCPUs (must request increase)
+- **Capacity Blocks**: Up to 64 instances per block, 256 instances total across blocks
+
+
+
+### How to Request Quota Increases
+1. Go to [AWS Service Quotas Console](https://console.aws.amazon.com/servicequotas/)
+2. Search for "EC2" and select "Amazon Elastic Compute Cloud (Amazon EC2)"
+3. Request increases for:
+   - "Running On-Demand P instances" (for p4d/p4de on-demand)
+   - "All P4, P3 and P2 Spot Instance Requests" (for p4d/p4de spot)
+   - "All P5 Spot Instance Requests" (for p5+/p6 spot instances)
+4. Specify the total vCPUs needed (e.g., 192 vCPUs for one p5.48xlarge)
+5. Provide business justification for ML/AI workloads
+
+**Note**: Quota increases typically take 24-48 hours to process. Plan accordingly for immediate availability needs.
+
+### vCPU Requirements by Instance Type
+| Instance Type | vCPUs Required | GPU Type | Quota Category |
+|---------------|----------------|----------|----------------|
+| p4d.24xlarge | 96 vCPUs | 8x A100 | On-Demand P / Spot P4/P3/P2 |
+| p4de.24xlarge | 96 vCPUs | 8x A100 | On-Demand P / Spot P4/P3/P2 |
+| p5.4xlarge | 16 vCPUs | 1x H100 | Spot P5 |
+| p5.48xlarge | 192 vCPUs | 8x H100 | Spot P5 |
+| p5e.48xlarge | 192 vCPUs | 8x H200 | Spot P5 |
+| p5en.48xlarge | 192 vCPUs | 8x H200 | Spot P5 |
+| p6-b200.48xlarge | 192 vCPUs | 8x B200 | Spot P5 |
+| p6-b300.48xlarge | 192 vCPUs | 8x B300 | Spot P5 |
+
+## Disclaimer
 
 These scripts are provided as-is for monitoring AWS pricing and availability. Use at your own discretion for production workloads. Always verify pricing and availability through the AWS console before making purchasing decisions.
 
-## 📞 Support
+## SSH Configuration
+
+The SSH configuration has been moved to `ssh-config.yaml` in the root directory. This contains template SSH settings for accessing development environments after launching P-series instances.
+
+**Security Note**: The `ssh-config.yaml` file is excluded from git tracking. Update the configuration with your specific hostnames and key paths before use.
+
+## Support
 
 For issues, questions, or feature requests, please open an issue on GitLab.
