@@ -117,17 +117,13 @@ python p_series_menu.py
 
 This complete analysis provides everything needed to make an informed decision about GPU instance procurement for your short-term workloads:
 
-**Spot Analysis**: Shows the single best AZ per instance type across all regions. Code selects highest placement score (availability indicator), with price as tiebreaker.
+**Spot Analysis**: Shows the single best AZ per instance type across all regions. Code selects highest placement score (availability indicator on 1-10 scale), with price as tiebreaker.
 
-**Important**: Spot recommendations prioritize highest availability scores (1-10 scale) first, then competitive pricing. Higher scores indicate better immediate availability for spot instance fulfillment.
-
-**Capacity Blocks**: Shows earliest available 24-hour blocks across all regions. Code picks most immediate availability, with shorter duration as tiebreaker.
-
-**Important**: Capacity blocks are sorted by earliest start time first, then shortest duration, then lowest price. Blocks starting within 1 hour are marked as "Immediate".
+**Capacity Blocks**: Shows earliest available 24-hour blocks across all regions. Code picks most immediate availability, with shorter duration as tiebreaker. Blocks starting within 1 hour are marked as "Immediate".
 
 **On-Demand**: Shows highest availability option per instance type across all regions. Code selects highest spot score (availability indicator), with lowest price as tiebreaker.
 
-**Important**: On-demand availability uses spot placement scores as a proxy for capacity availability. Most H100+ instances (p5, p6) are only available via spot and capacity blocks - not on-demand.
+**Important**: Most H100+ instances (p5, p6) are only available via spot and capacity blocks - not on-demand.
 
 **When finished**, deactivate the virtual environment:
 ```bash
