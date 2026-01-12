@@ -123,7 +123,7 @@ This complete analysis provides everything needed to make an informed decision a
 
 **On-Demand**: Shows highest availability option per instance type across all regions. Code selects highest spot score (availability indicator), with lowest price as tiebreaker.
 
-**Important**: Most H100+ instances (p5, p6) are only available via spot and capacity blocks - not on-demand.
+**Important**: Most H100+ instances (p5, p6) are only available via spot and capacity blocks - not on-demand at this time (1/11)
 
 **When finished**, deactivate the virtual environment:
 ```bash
