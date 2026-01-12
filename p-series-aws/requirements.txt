@@ -1,1 +1,3 @@
+# P-Series AWS Analysis Dependencies
+# boto3 - AWS SDK for EC2 and Pricing API access
 boto3>=1.26.0

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 P Series GPU Instance Analysis Menu
-Choose between Spot, Capacity Blocks, or Both
+Interactive menu for analyzing P-series availability across spot, capacity blocks, and on-demand.
 """
 
 import subprocess
@@ -127,7 +127,7 @@ def get_regions():
 
 
 def get_multi_region_selection(region_options):
-    """Allow selection of multiple regions"""
+    """Allow selection of multiple regions with interactive toggle interface"""
     chosen = set()
     
     while True:
@@ -155,7 +155,7 @@ def get_multi_region_selection(region_options):
             if user_input == 'q':
                 sys.exit(0)
             elif user_input == 'b':
-                return 'back'  # Signal to go back
+                return 'back'
             elif user_input == 'done':
                 if chosen:
                     return list(chosen)
@@ -187,8 +187,11 @@ def get_multi_region_selection(region_options):
 def run_script(script_name, regions=None):
     """Run a Python script and handle errors"""
     try:
+        # Use the script directly since we're already in the correct directory
+        script_path = script_name
+        
         # Pass regions as command line arguments if provided
-        cmd = [sys.executable, script_name]
+        cmd = [sys.executable, script_path]
         if regions:
             cmd.extend(regions)
             
@@ -203,7 +206,7 @@ def run_script(script_name, regions=None):
         
     except FileNotFoundError:
         print(f"✗ Script {script_name} not found")
-        print("Make sure all scripts are in the same directory")
+        print("Make sure all scripts are in the p-series-aws directory")
 
 def main():
     """Main menu loop"""
@@ -218,6 +221,7 @@ def main():
             break
             
         elif choice == 'a':
+            # Complete analysis - all three types
             regions = get_regions()
             if regions == 'back':
                 continue  # Go back to main menu
