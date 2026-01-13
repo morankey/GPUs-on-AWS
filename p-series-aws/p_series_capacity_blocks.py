@@ -7,12 +7,29 @@ Finds guaranteed reserved capacity for P-series GPU instances within 7 days.
 import boto3
 import sys
 import os
-import time
+import re
 from datetime import datetime, timedelta, timezone
 
+# Terminal display constants
+DEFAULT_TERMINAL_WIDTH = 120
+FULL_WIDTH_THRESHOLD = 140
+MEDIUM_WIDTH_THRESHOLD = 110
+COMPACT_WIDTH_MINIMUM = 85
+TERMINAL_PADDING = 5
 
-def show_progress_bar(current, total, prefix="Progress", suffix="Complete", length=30):
+# Table formatting constants
+PROGRESS_BAR_LENGTH = 30
+PROGRESS_BAR_CLEAR_WIDTH = 100
+CAPACITY_BLOCKS_FULL_TABLE_WIDTH = 115
+CAPACITY_BLOCKS_MEDIUM_TABLE_WIDTH = 100
+CAPACITY_BLOCKS_COMPACT_TABLE_WIDTH = 80
+CAPACITY_BLOCKS_SUMMARY_TABLE_WIDTH = 100
+
+
+def show_progress_bar(current, total, prefix="Progress", length=PROGRESS_BAR_LENGTH):
     """Display progress bar during long operations"""
+    if total == 0:
+        return
     percent = ("{0:.0f}").format(100 * (current / float(total)))
     filled_length = int(length * current // total)
     bar = '█' * filled_length + '░' * (length - filled_length)
@@ -22,22 +39,22 @@ def show_progress_bar(current, total, prefix="Progress", suffix="Complete", leng
 
 
 def get_terminal_width():
-    """Get terminal width, default to 120 if unable to detect"""
+    """Get terminal width, default to DEFAULT_TERMINAL_WIDTH if unable to detect"""
     try:
         return os.get_terminal_size().columns
-    except:
-        return 120
+    except OSError:
+        return DEFAULT_TERMINAL_WIDTH
 
 
 def format_table_width():
     """Determine table width based on terminal size"""
     terminal_width = get_terminal_width()
-    if terminal_width >= 140:
-        return 140, "full"
-    elif terminal_width >= 110:
-        return 110, "medium"
+    if terminal_width >= FULL_WIDTH_THRESHOLD:
+        return FULL_WIDTH_THRESHOLD, "full"
+    elif terminal_width >= MEDIUM_WIDTH_THRESHOLD:
+        return MEDIUM_WIDTH_THRESHOLD, "medium"
     else:
-        return min(terminal_width - 5, 85), "compact"
+        return min(terminal_width - TERMINAL_PADDING, COMPACT_WIDTH_MINIMUM), "compact"
 
 
 def get_gpu_info(instance_type):
@@ -115,7 +132,7 @@ def get_capacity_block_availability(region, instance_types):
     current_operation = 0
     
     for instance_type in instance_types:
-        show_progress_bar(current_operation, total_operations, "Analyzing capacity blocks", "")
+        show_progress_bar(current_operation, total_operations, "Analyzing capacity blocks")
         
         best_offering = None
         
@@ -180,7 +197,7 @@ def get_capacity_block_availability(region, instance_types):
         current_operation += 1
     
     # Clear progress bar
-    print("\r" + " " * 100 + "\r", end="", flush=True)
+    print("\r" + " " * PROGRESS_BAR_CLEAR_WIDTH + "\r", end="", flush=True)
     
     return capacity_blocks
 
@@ -211,7 +228,7 @@ def get_modern_p_series_instances(regions):
             
             all_modern_p_series.update(modern_p_series)
             
-        except Exception as e:
+        except Exception:
             # Fallback to minimal known list if API fails
             all_modern_p_series.update([
                 'p4d.24xlarge', 'p4de.24xlarge'
@@ -253,13 +270,13 @@ def get_capacity_block_summary(regions=None):
             # Print table headers for this region
             if format_type == "full":
                 print(f"{'Instance Type':<18} {'GPU':<8} {'Available':<9} {'Start Date':<20} {'Duration':<8} {'Total Cost':<10} {'AZ (AZ-ID)':<18} {'Offering ID':<15}")
-                print("-" * 115)
+                print("-" * CAPACITY_BLOCKS_FULL_TABLE_WIDTH)
             elif format_type == "medium":
                 print(f"{'Instance':<16} {'GPU':<8} {'Avail':<6} {'Start Date':<20} {'Dur':<6} {'Total Cost':<10} {'AZ (AZ-ID)':<16} {'Offering ID':<12}")
-                print("-" * 100)
+                print("-" * CAPACITY_BLOCKS_MEDIUM_TABLE_WIDTH)
             else:
                 print(f"{'Instance':<12} {'GPU':<8} {'Avail':<5} {'Start Date':<12} {'Dur':<5} {'Total Cost':<10} {'AZ-ID':<8} {'Offering ID':<10}")
-                print("-" * 80)
+                print("-" * CAPACITY_BLOCKS_COMPACT_TABLE_WIDTH)
             
             for instance_type in p_series_instances:
                 gpu_info = get_gpu_info(instance_type)
@@ -275,8 +292,7 @@ def get_capacity_block_summary(regions=None):
                         start_date = "Immediate"
                     else:
                         # Convert UTC to Eastern Time for display
-                        from datetime import timezone as tz
-                        eastern = tz(timedelta(hours=-5))  # EST (UTC-5)
+                        eastern = timezone(timedelta(hours=-5))  # EST (UTC-5)
                         eastern_time = block_info['start_date'].replace(tzinfo=timezone.utc).astimezone(eastern)
                         start_date = eastern_time.strftime('%Y-%m-%d %I:%M %p EST')
                     
@@ -314,7 +330,6 @@ def get_capacity_block_summary(regions=None):
                     
                     # Extract just AZ-ID for compact display
                     if az_display != "N/A":
-                        import re
                         match = re.search(r'\(([^)]+)\)', az_display)
                         compact_az = match.group(1) if match else az_display[:8]
                     else:
@@ -353,9 +368,9 @@ def get_best_capacity_block_summary(regions=None):
     
     print(f"BEST CAPACITY BLOCKS ACROSS REGIONS (Soonest Start Times)")
     print(f"Regions: {', '.join(regions)} - Within 7 Days")
-    print("=" * 100)
+    print("=" * CAPACITY_BLOCKS_SUMMARY_TABLE_WIDTH)
     print(f"{'Instance':<18} {'GPU':<8} {'Available':<9} {'Start Date':<20} {'Duration':<8} {'Total Cost':<10} {'Region':<12} {'AZ (AZ-ID)':<12} {'Offering ID':<12}")
-    print("-" * 100)
+    print("-" * CAPACITY_BLOCKS_SUMMARY_TABLE_WIDTH)
     
     # Collect all capacity blocks across regions
     all_blocks = {}  # instance_type -> list of blocks
@@ -373,7 +388,7 @@ def get_best_capacity_block_summary(regions=None):
                     block_with_region['region'] = region
                     all_blocks[instance_type].append(block_with_region)
                     
-        except Exception as e:
+        except Exception:
             continue
     
     # Find best (earliest) block for each instance type
@@ -396,8 +411,7 @@ def get_best_capacity_block_summary(regions=None):
             if time_diff <= 1:
                 start_date = "Immediate"
             else:
-                from datetime import timezone as tz
-                eastern = tz(timedelta(hours=-5))
+                eastern = timezone(timedelta(hours=-5))
                 eastern_time = best_block['start_date'].replace(tzinfo=timezone.utc).astimezone(eastern)
                 start_date = eastern_time.strftime('%m/%d %I:%M %p')
             
@@ -429,7 +443,7 @@ def get_best_capacity_block_summary(regions=None):
         
         print(f"{instance_type:<18} {gpu_info:<8} {available:<9} {start_date:<20} {duration:<8} {upfront_fee:<10} {region_str:<12} {az_display:<12} {offering_id:<12}")
     
-    print("\n" + "=" * 100)
+    print("\n" + "=" * CAPACITY_BLOCKS_SUMMARY_TABLE_WIDTH)
     print("Important: Shows earliest available 24-hour blocks across all regions. Code picks most immediate availability, with shorter duration as tiebreaker.")
 
 

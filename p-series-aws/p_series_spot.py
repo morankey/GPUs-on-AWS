@@ -7,33 +7,46 @@ Spot pricing and placement analysis for P-series GPU instances.
 import boto3
 import sys
 import os
-import time
 from datetime import datetime, timedelta, timezone
-from collections import defaultdict
+
+# Terminal display constants
+DEFAULT_TERMINAL_WIDTH = 120
+FULL_WIDTH_THRESHOLD = 150
+MEDIUM_WIDTH_THRESHOLD = 120
+COMPACT_WIDTH_MINIMUM = 75
+TERMINAL_PADDING = 5
+
+# Table formatting constants
+PROGRESS_BAR_LENGTH = 30
+PROGRESS_BAR_CLEAR_WIDTH = 80
+SPOT_ANALYSIS_TABLE_WIDTH = 84
+SPOT_SUMMARY_TABLE_WIDTH = 94
 
 
 def get_terminal_width():
-    """Get terminal width, default to 120 if unable to detect"""
+    """Get terminal width, default to DEFAULT_TERMINAL_WIDTH if unable to detect"""
     try:
         return os.get_terminal_size().columns
-    except:
-        return 120
+    except OSError:
+        return DEFAULT_TERMINAL_WIDTH
 
 
 def format_table_width():
     """Determine table width based on terminal size"""
     terminal_width = get_terminal_width()
-    if terminal_width >= 150:
-        return 150, "full"
-    elif terminal_width >= 120:
-        return 120, "medium"
+    if terminal_width >= FULL_WIDTH_THRESHOLD:
+        return FULL_WIDTH_THRESHOLD, "full"
+    elif terminal_width >= MEDIUM_WIDTH_THRESHOLD:
+        return MEDIUM_WIDTH_THRESHOLD, "medium"
     else:
         # For narrow terminals, use actual width minus some padding
-        return min(terminal_width - 5, 75), "compact"
+        return min(terminal_width - TERMINAL_PADDING, COMPACT_WIDTH_MINIMUM), "compact"
 
 
-def show_progress_bar(current, total, prefix="Progress", suffix="Complete", length=30):
+def show_progress_bar(current, total, prefix="Progress", length=PROGRESS_BAR_LENGTH):
     """Display progress bar during long operations"""
+    if total == 0:
+        return
     percent = ("{0:.0f}").format(100 * (current / float(total)))
     filled_length = int(length * current // total)
     bar = '█' * filled_length + '░' * (length - filled_length)
@@ -147,7 +160,7 @@ def get_modern_p_series_instances(regions):
             
             all_modern_p_series.update(modern_p_series)
             
-        except Exception as e:
+        except Exception:
             # Graceful fallback to minimal known list if API fails
             # This ensures the tool still works even with API issues
             all_modern_p_series.update([
@@ -171,9 +184,9 @@ def get_price_and_score_summary(regions=None):
     
     p_series_instances = get_modern_p_series_instances(regions)
     
-    print(f"SPOT PRICING - PRICE-CAPACITY OPTIMIZED RECOMMENDATIONS (Best Value: High Score + Low Price)")
+    print(f"SPOT PRICING - BEST AVAILABILITY (Highest Score, Lowest Price Tiebreaker)")
     print(f"Regions: {', '.join(regions)}")
-    print("=" * 84)
+    print("=" * SPOT_ANALYSIS_TABLE_WIDTH)
     
     # Data structure: region -> instance_type -> list of {price, score, az, value_ratio}
     combined_data = {}  
@@ -194,7 +207,7 @@ def get_price_and_score_summary(regions=None):
         # Get prices by AZ
         prices_by_az = {}
         try:
-            show_progress_bar(current_operation, total_operations, "Analyzing spot data", "")
+            show_progress_bar(current_operation, total_operations, "Analyzing spot data")
             
             price_response = client.describe_spot_price_history(
                 InstanceTypes=p_series_instances,
@@ -212,7 +225,7 @@ def get_price_and_score_summary(regions=None):
                     prices_by_az[instance_type] = {}
                 prices_by_az[instance_type][az_name] = price
                 
-        except Exception as e:
+        except Exception:
             pass
         
         current_operation += 1
@@ -220,7 +233,7 @@ def get_price_and_score_summary(regions=None):
         # Get scores and combine with prices
         for instance_type in p_series_instances:
             try:
-                show_progress_bar(current_operation, total_operations, "Analyzing spot data", "")
+                show_progress_bar(current_operation, total_operations, "Analyzing spot data")
                 
                 score_response = client.get_spot_placement_scores(
                     InstanceTypes=[instance_type],
@@ -254,13 +267,13 @@ def get_price_and_score_summary(regions=None):
                             'value_ratio': value_ratio
                         })
                     
-            except Exception as e:
+            except Exception:
                 pass
             
             current_operation += 1
     
     # Clear progress bar
-    print("\r" + " " * 80 + "\r", end="")
+    print("\r" + " " * PROGRESS_BAR_CLEAR_WIDTH + "\r", end="")
     
     # Display results by region
     for region in regions:
@@ -269,13 +282,13 @@ def get_price_and_score_summary(regions=None):
         print(f"{'Instance Type':<18} {'GPU':<12} {'Score':<6} {'Price/Hour':<12} {'AZ (AZ-ID)':<20}")
         print("-" * 72)
         
-        # Find best value (highest score/price ratio) for each instance type
+        # Find best value (highest score, lowest price as tiebreaker) for each instance type
         best_values = {}
         
         for instance_type, options in combined_data[region].items():
             if options:
-                # Sort by value ratio (score/price) descending, then by score descending
-                best_option = max(options, key=lambda x: (x['value_ratio'], x['score']))
+                # Sort by score descending, then by price ascending as tiebreaker
+                best_option = max(options, key=lambda x: (x['score'], -x['price']))
                 best_values[instance_type] = best_option
         
         # Display results for this region
@@ -294,8 +307,8 @@ def get_price_and_score_summary(regions=None):
             
             print(f"{instance_type:<18} {gpu_info:<12} {score_str:<6} {price_str:<12} {az_display:<20}")
     
-    print("\n" + "=" * 84)
-    print("Important: Shows the single best AZ per instance type across all regions. Code selects highest placement score (availability indicator), with price as tiebreaker.")
+    print("\n" + "=" * SPOT_ANALYSIS_TABLE_WIDTH)
+    print("Important: Shows highest placement score per instance type, with lowest price as tiebreaker.")
 
 
 def get_best_spot_summary(regions=None):
@@ -313,9 +326,9 @@ def get_best_spot_summary(regions=None):
     
     print(f"BEST SPOT OPTIONS ACROSS REGIONS (Highest Score + Competitive Price)")
     print(f"Regions: {', '.join(regions)}")
-    print("=" * 84)
+    print("=" * SPOT_ANALYSIS_TABLE_WIDTH)
     print(f"{'Instance':<18} {'GPU':<12} {'Best Score':<10} {'Price/Hour':<12} {'Region':<12} {'AZ (AZ-ID)':<20}")
-    print("-" * 94)
+    print("-" * SPOT_SUMMARY_TABLE_WIDTH)
     
     # Collect all data across regions
     all_data = {}  # instance_type -> list of options
@@ -331,7 +344,7 @@ def get_best_spot_summary(regions=None):
         # Get prices by AZ
         prices_by_az = {}
         try:
-            show_progress_bar(current_operation, total_operations, "Analyzing spot data", "")
+            show_progress_bar(current_operation, total_operations, "Analyzing spot data")
             
             price_response = client.describe_spot_price_history(
                 InstanceTypes=p_series_instances,
@@ -349,7 +362,7 @@ def get_best_spot_summary(regions=None):
                     prices_by_az[instance_type] = {}
                 prices_by_az[instance_type][az_name] = price
                 
-        except Exception as e:
+        except Exception:
             pass
         
         current_operation += 1
@@ -360,7 +373,7 @@ def get_best_spot_summary(regions=None):
                 all_data[instance_type] = []
                 
             try:
-                show_progress_bar(current_operation, total_operations, "Analyzing spot data", "")
+                show_progress_bar(current_operation, total_operations, "Analyzing spot data")
                 
                 score_response = client.get_spot_placement_scores(
                     InstanceTypes=[instance_type],
@@ -391,13 +404,13 @@ def get_best_spot_summary(regions=None):
                             'value_ratio': score / price if price > 0 else 0
                         })
                     
-            except Exception as e:
+            except Exception:
                 pass
             
             current_operation += 1
     
     # Clear progress bar line
-    print("\r" + " " * 80 + "\r", end="")
+    print("\r" + " " * PROGRESS_BAR_CLEAR_WIDTH + "\r", end="")
     
     # Find best option for each instance type across all regions
     for instance_type in p_series_instances:
@@ -419,7 +432,7 @@ def get_best_spot_summary(regions=None):
         
         print(f"{instance_type:<18} {gpu_info:<12} {score_str:<10} {price_str:<12} {region_str:<12} {az_str:<20}")
     
-    print("\n" + "=" * 84)
+    print("\n" + "=" * SPOT_ANALYSIS_TABLE_WIDTH)
     print("Important: Shows the single best AZ per instance type across all regions. Code selects highest placement score (availability indicator), with price as tiebreaker.")
 
 

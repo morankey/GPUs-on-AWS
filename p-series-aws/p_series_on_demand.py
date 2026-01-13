@@ -8,12 +8,26 @@ import boto3
 import sys
 import json
 import os
-import time
+import re
 from datetime import datetime
 
+# Terminal display constants
+DEFAULT_TERMINAL_WIDTH = 120
+FULL_WIDTH_THRESHOLD = 150
+MEDIUM_WIDTH_THRESHOLD = 120
+COMPACT_WIDTH_MINIMUM = 75
+TERMINAL_PADDING = 5
 
-def show_progress_bar(current, total, prefix="Progress", suffix="Complete", length=30):
+# Table formatting constants
+PROGRESS_BAR_LENGTH = 30
+PROGRESS_BAR_CLEAR_WIDTH = 80
+ON_DEMAND_ANALYSIS_TABLE_WIDTH = 84
+
+
+def show_progress_bar(current, total, prefix="Progress", length=PROGRESS_BAR_LENGTH):
     """Display progress bar during long operations"""
+    if total == 0:
+        return
     percent = ("{0:.0f}").format(100 * (current / float(total)))
     filled_length = int(length * current // total)
     bar = '█' * filled_length + '░' * (length - filled_length)
@@ -23,23 +37,23 @@ def show_progress_bar(current, total, prefix="Progress", suffix="Complete", leng
 
 
 def get_terminal_width():
-    """Get terminal width, default to 120 if unable to detect"""
+    """Get terminal width, default to DEFAULT_TERMINAL_WIDTH if unable to detect"""
     try:
         return os.get_terminal_size().columns
-    except:
-        return 120
+    except OSError:
+        return DEFAULT_TERMINAL_WIDTH
 
 
 def format_table_width():
     """Determine table width based on terminal size"""
     terminal_width = get_terminal_width()
-    if terminal_width >= 150:
-        return 150, "full"
-    elif terminal_width >= 120:
-        return 120, "medium"
+    if terminal_width >= FULL_WIDTH_THRESHOLD:
+        return FULL_WIDTH_THRESHOLD, "full"
+    elif terminal_width >= MEDIUM_WIDTH_THRESHOLD:
+        return MEDIUM_WIDTH_THRESHOLD, "medium"
     else:
         # For narrow terminals, use actual width minus some padding
-        return min(terminal_width - 5, 75), "compact"
+        return min(terminal_width - TERMINAL_PADDING, COMPACT_WIDTH_MINIMUM), "compact"
 
 
 def get_gpu_info(instance_type):
@@ -155,7 +169,7 @@ def get_available_azs_for_instance(region, instance_type):
         available_azs.sort(key=lambda x: x['score'], reverse=True)
         return available_azs
         
-    except Exception as e:
+    except Exception:
         return []
 
 
@@ -186,7 +200,7 @@ def get_modern_p_series_instances(regions):
             
             all_modern_p_series.update(modern_p_series)
             
-        except Exception as e:
+        except Exception:
             # Graceful fallback to minimal known list if API fails
             # This ensures the tool still works even with API issues
             all_modern_p_series.update([
@@ -231,7 +245,7 @@ def get_on_demand_pricing(regions):
         pricing_data[region] = {}
         
         for instance_type in p_series_instances:
-            show_progress_bar(current_operation, total_operations, "Fetching pricing data", "")
+            show_progress_bar(current_operation, total_operations, "Fetching pricing data")
             
             try:
                 response = pricing_client.get_products(
@@ -281,13 +295,13 @@ def get_on_demand_pricing(regions):
                 else:
                     pricing_data[region][instance_type] = {'price': 0.0, 'available': False}
                     
-            except Exception as e:
+            except Exception:
                 pricing_data[region][instance_type] = {'price': 0.0, 'available': False}
             
             current_operation += 1
         
     # Clear progress bar
-    print("\r" + " " * 80 + "\r", end="")
+    print("\r" + " " * PROGRESS_BAR_CLEAR_WIDTH + "\r", end="")
     
     return pricing_data
 
@@ -451,7 +465,6 @@ def get_on_demand_analysis(regions=None):
             else:
                 # Minimal format for narrow terminals
                 if instance_type in ["p4d.24xlarge", "p4de.24xlarge"] and "Score:" in az_list:
-                    import re
                     match = re.search(r'\(([^)]+)\).*Score:\s*(\d+)', az_list)
                     if match:
                         az_id, score = match.groups()
@@ -477,9 +490,9 @@ def get_on_demand_summary(regions=None):
     pricing_data = get_on_demand_pricing(regions)
     
     print(f"BEST ON-DEMAND OPTIONS (Highest Availability + Competitive Price)")
-    print("=" * 84)
+    print("=" * ON_DEMAND_ANALYSIS_TABLE_WIDTH)
     print(f"{'Instance':<18} {'GPU':<12} {'Best Price':<12} {'Region':<12} {'Best AZ (AZ-ID) & Score':<30}")
-    print("-" * 84)
+    print("-" * ON_DEMAND_ANALYSIS_TABLE_WIDTH)
     
     for instance_type in p_series_instances:
         gpu_info = get_gpu_info(instance_type)
@@ -532,7 +545,7 @@ def get_on_demand_summary(regions=None):
         
         print(f"{instance_type:<18} {gpu_info:<12} {price_str:<12} {region_str:<12} {az_list:<30}")
     
-    print("\n" + "=" * 84)
+    print("\n" + "=" * ON_DEMAND_ANALYSIS_TABLE_WIDTH)
     print("Important: Shows highest availability option per instance type across all regions. Code selects highest spot score (availability indicator), with lowest price as tiebreaker.")
 
 

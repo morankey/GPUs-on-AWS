@@ -9,6 +9,9 @@ import sys
 import termios
 import tty
 
+# Menu display constants
+MENU_SEPARATOR_WIDTH = 60
+
 
 def getch():
     """Get a single character from stdin without pressing Enter"""
@@ -37,9 +40,9 @@ def show_menu():
     while True:
         # Clear screen and show menu
         print("\033[2J\033[H")  # Clear screen and move cursor to top
-        print("=" * 60)
+        print("=" * MENU_SEPARATOR_WIDTH)
         print("P SERIES AVAILABILITY AND PRICING")
-        print("=" * 60)
+        print("=" * MENU_SEPARATOR_WIDTH)
         print()
         print("What would you like to explore?")
         print("Use ↑/↓ arrows to navigate, Enter to select, 'q' to quit")
@@ -195,10 +198,10 @@ def run_script(script_name, regions=None):
         if regions:
             cmd.extend(regions)
             
-        result = subprocess.run(cmd, 
-                              capture_output=False, 
-                              text=True, 
-                              check=True)
+        subprocess.run(cmd, 
+                      capture_output=False, 
+                      text=True, 
+                      check=True)
         
     except subprocess.CalledProcessError as e:
         print(f"✗ Error running {script_name}")
@@ -249,7 +252,7 @@ def main():
                 continue  # Go back to main menu
             run_script("p_series_on_demand.py", regions)
         
-        print("\n" + "="*60)
+        print("\n" + "=" * MENU_SEPARATOR_WIDTH)
         input("Press Enter to return to menu...")
         print()
 
