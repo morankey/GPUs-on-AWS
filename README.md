@@ -1,13 +1,15 @@
-# P-Series Immediate Short Term Single Instance Analyzer
+# P-Series Analyzer
 
 [![Python 3.10+](https://img.shields.io/badge/python-3.10+-blue.svg)](https://www.python.org/downloads/)
 [![AWS](https://img.shields.io/badge/AWS-EC2-orange.svg)](https://aws.amazon.com/ec2/)
 
 ## Summary
 
-**Teams want immediate, single instance, short-term access to high-end GPU compute for adhoc AI and ML training jobs. This tool helps you find your P-series at the earliest date available by analyzing Nvidia P-Series instances on AWS right now.**
+**Teams want immediate, single instance, short-term access to high-end GPU compute for adhoc AI and ML training jobs. This tool helps you identify where P-series instances may be available by analyzing Nvidia P-Series instances on AWS right now.**
 
 **Single Instance, Immediate Access, <1 Day Duration**
+
+> ⚠️ **This tool is informational only.** It queries AWS APIs to show current pricing and availability indicators. It does not reserve, hold, or procure any instances. Availability can change between when you run this tool and when you attempt to launch.
 
 This tool analyzes your selected regions and shows:
 
@@ -24,6 +26,7 @@ This tool analyzes your selected regions and shows:
 - Python 3.10+
 - AWS CLI configured with appropriate credentials
 - boto3 library
+- macOS or Linux (the interactive menu uses Unix-specific terminal features)
 - EC2 permissions for spot pricing, placement scores, availability zones, and capacity blocks
 - Pricing API permissions
 - **Sufficient AWS quotas** (see quota requirements below)
@@ -73,11 +76,8 @@ cd p-series-aws
 # Create virtual environment
 python -m venv venv
 
-# Activate virtual environment
-# On macOS/Linux:
+# Activate virtual environment (macOS/Linux only)
 source venv/bin/activate
-# On Windows:
-# venv\Scripts\activate
 ```
 
 3. **Install dependencies:**
@@ -95,27 +95,24 @@ pip list          # Should show boto3 and dependencies
 
 **Important**: Make sure your virtual environment is activated before running the scripts:
 ```bash
-source venv/bin/activate  # On macOS/Linux
-# venv\Scripts\activate   # On Windows
+source venv/bin/activate
 ```
 
-The interactive menu is recommended for most users:
+The interactive menu provides a simple interface:
 
 ```bash
 python p_series_menu.py
 ```
 
-**Next Steps:**
-1. **Select "All Options - Complete analysis"** for comprehensive evaluation across all procurement methods
+### Simple Region Selection
 
-2. **Select your regions of interest** from the available options
+Just enter regions separated by commas, or press Enter for the default (us-east-1,us-west-2):
 
-3. **Review the complete analysis** which will show:
-   - **Spot pricing** with placement scores for cost optimization
-   - **Capacity blocks** for guaranteed immediate availability 
-   - **On-demand pricing** for maximum flexibility
+```
+Regions: us-east-1,us-west-2,ap-northeast-1
+```
 
-This complete analysis provides everything needed to make an informed decision about GPU instance procurement for your short-term workloads:
+Or press Enter for default regions. That's it!
 
 **Spot Analysis**: Shows the single best AZ per instance type across all regions. Code selects highest placement score (availability indicator on 1-10 scale), with price as tiebreaker.
 
@@ -123,7 +120,7 @@ This complete analysis provides everything needed to make an informed decision a
 
 **On-Demand**: Shows highest availability option per instance type across all regions. Code selects highest spot score (availability indicator), with lowest price as tiebreaker.
 
-**Important**: Most H100+ instances (p5, p6) are only available via spot and capacity blocks - not on-demand at this time (1/11)
+**Important**: Most H100+ instances (p5, p6) are only available via spot and capacity blocks - not on-demand at this time.
 
 **When finished**, deactivate the virtual environment:
 ```bash
@@ -181,10 +178,10 @@ p6-b300.48xlarge   8x B300      N/A          Spot & CB Only N/A
 
 | Instance Type | GPU Type | GPU Count | GPU Memory | System Memory | CPU | Instance Store | Use Case |
 |---------------|----------|-----------|------------|---------------|-----|----------------|----------|
-| p4d.24xlarge | 8x A100 | 8 | 40GB each (320GB total) | 1152 GB | Intel Xeon Platinum 8175 | 8 x 1000 GB NVMe SSD | Training, Inference |
-| p4de.24xlarge | 8x A100 | 8 | 80GB each (640GB total) | 1152 GB | Intel Xeon Platinum 8175 | 8 x 1000 GB NVMe SSD | Training, Inference |
-| p5.4xlarge | 1x H100 | 1 | 80GB each (80GB total) | 192 GB | AMD EPYC 7R13 | 1 x 3800 GB NVMe SSD | Small-scale Training, Inference |
+| p4d.24xlarge | 8x A100 | 8 | 40GB each (320GB total) | 1152 GB | Intel Xeon Platinum 8275CL | 8 x 1000 GB NVMe SSD | Training, Inference |
+| p4de.24xlarge | 8x A100 | 8 | 80GB each (640GB total) | 1152 GB | Intel Xeon Platinum 8275CL | 8 x 1000 GB NVMe SSD | Training, Inference |
 | p5.48xlarge | 8x H100 | 8 | 80GB each (640GB total) | 2048 GB | AMD EPYC 7R13 | 8 x 3800 GB NVMe SSD | Large Model Training |
+| p5.4xlarge | 1x H100 | 1 | 80GB each (80GB total) | 192 GB | AMD EPYC 7R13 | 1 x 3800 GB NVMe SSD | Small-scale Training, Inference |
 | p5e.48xlarge | 8x H200 | 8 | 141GB each (1128GB total) | 2048 GB | AMD EPYC 7R13 | 8 x 3800 GB NVMe SSD | Large Model Training |
 | p5en.48xlarge | 8x H200 | 8 | 141GB each (1128GB total) | 2048 GB | Intel Xeon Sapphire Rapids | 8 x 3800 GB NVMe SSD | Next-gen AI Workloads |
 | p6-b200.48xlarge | 8x B200 | 8 | 192GB each (1536GB total) | 2048 GB | Intel Xeon Emerald Rapids | 8 x 3800 GB NVMe SSD | Next-gen AI Workloads |
@@ -211,8 +208,6 @@ p6-b300.48xlarge   8x B300      N/A          Spot & CB Only N/A
 - **Spot P4/P3/P2 instances**: 0 vCPUs (must request increase) 
 - **Spot P5 instances**: 0 vCPUs (must request increase)
 - **Capacity Blocks**: Up to 64 instances per block, 256 instances total across blocks
-
-
 
 ### How to Request Quota Increases
 1. Go to [AWS Service Quotas Console](https://console.aws.amazon.com/servicequotas/)
@@ -241,12 +236,6 @@ p6-b300.48xlarge   8x B300      N/A          Spot & CB Only N/A
 ## Disclaimer
 
 These scripts are provided as-is for monitoring AWS pricing and availability. Use at your own discretion for production workloads. Always verify pricing and availability through the AWS console before making purchasing decisions.
-
-## SSH Configuration
-
-The SSH configuration has been moved to `ssh-config.yaml` in the root directory. This contains template SSH settings for accessing development environments after launching P-series instances.
-
-**Security Note**: The `ssh-config.yaml` file is excluded from git tracking. Update the configuration with your specific hostnames and key paths before use.
 
 ## Support
 
