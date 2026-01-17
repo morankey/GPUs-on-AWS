@@ -1,8 +1,0 @@
-# P-Series AWS Analysis Dependencies
-# boto3 - AWS SDK for EC2 and Pricing API access
-boto3>=1.26.0
-
-# Development dependencies (optional)
-# Uncomment for testing:
-# pytest>=7.0.0
-# pytest-cov>=4.0.0
