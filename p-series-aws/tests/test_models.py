@@ -93,7 +93,7 @@ class TestOnDemandResult(unittest.TestCase):
         )
         self.assertTrue(result.available)
         self.assertEqual(result.price, 21.95)
-        self.assertEqual(result.az_display, "2d (usw2-az4) Score:9")
+        self.assertEqual(result.az_display, "2d (usw2-az4) - Likely")
     
     def test_spot_only_instance(self):
         """Test spot/CB only instance"""

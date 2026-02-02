@@ -120,12 +120,21 @@ class OnDemandResult:
     @property
     def az_display(self) -> str:
         """
-        Format AZ for display as 'suffix (az_id) Score:X'.
+        Format AZ for display as 'suffix (az_id) - Likelihood'.
         
-        Includes the availability score for on-demand recommendations.
+        Converts spot score to likelihood label for on-demand recommendations.
         Returns 'N/A' if availability zone is not set.
         """
         if not self.az_name or self.az_name == 'N/A':
             return 'N/A'
         az_suffix = self.az_name.split('-')[-1] if '-' in self.az_name else self.az_name
-        return f"{az_suffix} ({self.az_id}) Score:{self.score}"
+        
+        # Convert score to likelihood label
+        if self.score >= 8:
+            likelihood = "Likely"
+        elif self.score >= 5:
+            likelihood = "Possible"
+        else:
+            likelihood = "Unlikely"
+        
+        return f"{az_suffix} ({self.az_id}) - {likelihood}"

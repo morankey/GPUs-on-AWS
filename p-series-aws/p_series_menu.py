@@ -26,12 +26,21 @@ CLEAR_SCREEN = "\033[2J\033[H"
 REGION_NAMES = {
     "us-east-1": "N. Virginia",
     "us-east-2": "Ohio",
+    "us-west-1": "N. California",
     "us-west-2": "Oregon",
-    "eu-west-1": "Ireland",
-    "eu-central-1": "Frankfurt",
     "ap-northeast-1": "Tokyo",
+    "ap-northeast-2": "Seoul",
+    "ap-south-1": "Mumbai",
     "ap-southeast-1": "Singapore",
     "ap-southeast-2": "Sydney",
+    "ca-central-1": "Canada",
+    "eu-central-1": "Frankfurt",
+    "eu-north-1": "Stockholm",
+    "eu-south-2": "Spain",
+    "eu-west-1": "Ireland",
+    "eu-west-2": "London",
+    "eu-west-3": "Paris",
+    "sa-east-1": "São Paulo",
 }
 
 
@@ -65,7 +74,7 @@ def show_menu():
         ("All Options (recommended) - Complete analysis (Spot + Capacity Blocks + On-Demand)", "a"),
         ("Capacity Blocks - Reserved capacity pricing and availability", "b"),
         ("Spot Instances - Dynamic spot pricing & placement", "c"),
-        ("On-Demand - Fixed pricing with guaranteed capacity", "d")
+        ("On-Demand - Fixed pricing", "d")
     ]
     
     selected = 0
@@ -108,6 +117,7 @@ def get_regions():
     """
     Get region selection from user.
     
+    Shows main regions first with option to see all regions.
     Auto-detects user's active regions and shows them first for easy selection.
     Returns a list of region codes, or 'back' to return to main menu.
     """
@@ -119,40 +129,67 @@ def get_regions():
     priority_regions, other_regions = client.get_suggested_regions()
     default_region = client.get_default_region()
     
-    print(CLEAR_SCREEN, end="")
+    # Main regions (most commonly used)
+    main_regions = ["us-east-1", "us-east-2", "us-west-2", "eu-west-1", "eu-central-1", "ap-northeast-1"]
     
-    # Build menu options
-    options = []
+    return show_region_menu(main_regions, priority_regions, other_regions, default_region)
+
+
+def show_region_menu(main_regions, priority_regions, other_regions, default_region, show_all=False):
+    """
+    Display region selection menu.
     
-    # Quick select option if we found active regions
-    if priority_regions:
-        if len(priority_regions) == 1:
-            region = priority_regions[0]
-            options.append((f"★ {region} ({REGION_NAMES.get(region, '')}) - Your active region", "auto"))
-        else:
-            regions_display = ", ".join([f"{r}" for r in priority_regions])
-            options.append((f"★ {regions_display} - Your active regions", "auto"))
+    Args:
+        main_regions: List of main/popular region codes
+        priority_regions: List of detected/active regions
+        other_regions: List of remaining regions
+        default_region: User's default region
+        show_all: If True, show all regions instead of just main ones
+    """
+    all_regions = list(REGION_NAMES.keys())
     
-    # Multi-select option
-    options.append(("Select regions manually...", "multi"))
-    
-    # Show other regions as individual options (flat list, no section header)
-    for region in other_regions:
-        options.append((f"{region} ({REGION_NAMES.get(region, '')})", region))
-    
-    # Display menu
     while True:
         print(CLEAR_SCREEN, end="")
         print("Select regions to analyze:")
         print()
         
+        options = []
+        
+        # Quick select option if we found active regions
+        if priority_regions:
+            if len(priority_regions) == 1:
+                region = priority_regions[0]
+                options.append((f"★ {region} ({REGION_NAMES.get(region, '')}) - Your active region", "auto"))
+            else:
+                regions_display = ", ".join([f"{r}" for r in priority_regions])
+                options.append((f"★ {regions_display} - Your active regions", "auto"))
+        
+        # Multi-select option
+        options.append(("Select multiple regions...", "multi"))
+        
+        # Show regions based on mode
+        if show_all:
+            # Show all regions
+            for region in all_regions:
+                default_marker = " ★" if region == default_region else ""
+                options.append((f"{region} ({REGION_NAMES.get(region, '')}){default_marker}", region))
+            options.append(("← Show main regions only", "main"))
+        else:
+            # Show only main regions
+            for region in main_regions:
+                default_marker = " ★" if region == default_region else ""
+                options.append((f"{region} ({REGION_NAMES.get(region, '')}){default_marker}", region))
+            options.append(("More regions...", "more"))
+        
         display_num = 1
-        option_map = {}  # Maps display number to option
+        option_map = {}
         
         for name, code in options:
             option_map[display_num] = (name, code)
             if code == "auto":
                 print(f"  {display_num}) {name}  ← Quick select")
+            elif code in ("more", "main"):
+                print(f"  {display_num}) {name}")
             else:
                 print(f"  {display_num}) {name}")
             display_num += 1
@@ -174,9 +211,12 @@ def get_regions():
                     if code == "auto":
                         return priority_regions
                     elif code == "multi":
-                        all_regions = priority_regions + other_regions
                         result = get_multi_region_selection(all_regions, priority_regions, default_region)
                         return result if result != 'back' else 'back'
+                    elif code == "more":
+                        return show_region_menu(main_regions, priority_regions, other_regions, default_region, show_all=True)
+                    elif code == "main":
+                        return show_region_menu(main_regions, priority_regions, other_regions, default_region, show_all=False)
                     else:
                         return [code]
                 else:

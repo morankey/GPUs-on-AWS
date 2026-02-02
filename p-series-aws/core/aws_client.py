@@ -28,24 +28,42 @@ class AWSClient:
     ON_DEMAND_AVAILABILITY = {
         "us-east-1": {"p4d.24xlarge": True, "p4de.24xlarge": True},
         "us-east-2": {"p4d.24xlarge": True, "p4de.24xlarge": True},
+        "us-west-1": {"p4d.24xlarge": True},
         "us-west-2": {"p4d.24xlarge": True, "p4de.24xlarge": True},
-        "eu-west-1": {"p4d.24xlarge": True},
-        "eu-central-1": {"p4d.24xlarge": True},
         "ap-northeast-1": {"p4d.24xlarge": True, "p4de.24xlarge": True},
+        "ap-northeast-2": {"p4d.24xlarge": True},
+        "ap-south-1": {"p4d.24xlarge": True},
         "ap-southeast-1": {"p4d.24xlarge": True},
         "ap-southeast-2": {"p4d.24xlarge": True},
+        "ca-central-1": {"p4d.24xlarge": True},
+        "eu-central-1": {"p4d.24xlarge": True, "p4de.24xlarge": True, "p5.48xlarge": True, "p5.4xlarge": True, "p5e.48xlarge": True, "p5en.48xlarge": True, "p6-b200.48xlarge": True},
+        "eu-north-1": {"p4d.24xlarge": True},
+        "eu-south-2": {"p4d.24xlarge": True},
+        "eu-west-1": {"p4d.24xlarge": True},
+        "eu-west-2": {"p4d.24xlarge": True, "p4de.24xlarge": True},
+        "eu-west-3": {"p4d.24xlarge": True},
+        "sa-east-1": {"p4d.24xlarge": True},
     }
     
     # Pricing API region name mapping
     PRICING_REGION_MAP = {
         'us-east-1': 'US East (N. Virginia)',
         'us-east-2': 'US East (Ohio)',
+        'us-west-1': 'US West (N. California)',
         'us-west-2': 'US West (Oregon)',
-        'eu-west-1': 'EU (Ireland)',
-        'eu-central-1': 'EU (Frankfurt)',
         'ap-northeast-1': 'Asia Pacific (Tokyo)',
+        'ap-northeast-2': 'Asia Pacific (Seoul)',
+        'ap-south-1': 'Asia Pacific (Mumbai)',
         'ap-southeast-1': 'Asia Pacific (Singapore)',
         'ap-southeast-2': 'Asia Pacific (Sydney)',
+        'ca-central-1': 'Canada (Central)',
+        'eu-central-1': 'EU (Frankfurt)',
+        'eu-north-1': 'EU (Stockholm)',
+        'eu-south-2': 'Europe (Spain)',
+        'eu-west-1': 'EU (Ireland)',
+        'eu-west-2': 'EU (London)',
+        'eu-west-3': 'EU (Paris)',
+        'sa-east-1': 'South America (Sao Paulo)',
     }
     
     def __init__(self):

@@ -38,12 +38,11 @@ class Spinner:
         self._stop_event = threading.Event()
         self._thread = None
         self._frame_idx = 0
-        self._progress_text = ""
     
     def _animate(self):
         while not self._stop_event.is_set():
             frame = SPINNER_FRAMES[self._frame_idx % len(SPINNER_FRAMES)]
-            text = f"\r{frame} {self.message}{self._progress_text}"
+            text = f"\r{frame} {self.message}"
             sys.stdout.write(f"{text:<60}")
             sys.stdout.flush()
             self._frame_idx += 1
@@ -54,8 +53,9 @@ class Spinner:
         self._thread = threading.Thread(target=self._animate, daemon=True)
         self._thread.start()
     
-    def update(self, progress_text: str = ""):
-        self._progress_text = progress_text
+    def update(self):
+        """No-op for compatibility - spinner just animates continuously."""
+        pass
     
     def stop(self):
         self._stop_event.set()
@@ -90,10 +90,9 @@ class TableFormatter:
         self._spinner = Spinner(message)
         self._spinner.start()
     
-    def update_progress(self, current: int, total: int):
-        """Update spinner with progress count."""
-        if self._spinner and total > 0:
-            self._spinner.update(f" ({current}/{total})")
+    def update_progress(self, current: int = 0, total: int = 0):
+        """No-op for compatibility - spinner just animates continuously."""
+        pass
     
     def stop_progress(self):
         """Stop and clear the spinner."""
@@ -102,11 +101,10 @@ class TableFormatter:
             self._spinner = None
     
     # Legacy methods for backward compatibility
-    def show_progress(self, current: int, total: int, prefix: str = "Progress"):
-        """Display progress (starts spinner on first call, updates on subsequent)."""
+    def show_progress(self, current: int = 0, total: int = 0, prefix: str = "Progress"):
+        """Display progress (starts spinner on first call)."""
         if self._spinner is None:
             self.start_progress(prefix)
-        self.update_progress(current, total)
     
     def clear_progress(self):
         """Clear progress indicator."""
@@ -153,8 +151,6 @@ class TableFormatter:
         print("=" * TABLE_WIDTH_STANDARD)
         
         for region, results in results_by_region.items():
-            print(f"\n{region.upper()}")
-            print("-" * len(region))
             print(f"{'Instance Type':<18} {'GPU':<12} {'Score':<6} {'Price/Hour':<12} {'AZ (AZ-ID)':<20}")
             print("-" * 72)
             
@@ -183,6 +179,18 @@ class TableFormatter:
         print(f"BEST CAPACITY BLOCKS ACROSS REGIONS (Soonest Start Times)")
         print(f"Regions: {', '.join(regions)} - Within 7 Days")
         print("=" * TABLE_WIDTH_WIDE)
+        
+        # Check if any capacity blocks are available
+        has_any_available = any(r.available for r in results)
+        
+        if not has_any_available:
+            print()
+            print("  ⚠ No capacity blocks available in the selected region(s)")
+            print("  Try expanding your search to additional regions.")
+            print()
+            print("=" * TABLE_WIDTH_WIDE)
+            return
+        
         print(f"{'Instance':<18} {'GPU':<8} {'Available':<9} {'Start Date':<20} {'Duration':<8} {'Total Cost':<10} {'Region':<12} {'AZ (AZ-ID)':<12} {'Offering ID':<12}")
         print("-" * TABLE_WIDTH_WIDE)
         
@@ -230,8 +238,14 @@ class TableFormatter:
         print("=" * TABLE_WIDTH_WIDE)
         
         for region, results in results_by_region.items():
-            print(f"\n{region.upper()}")
-            print("-" * len(region))
+            # Check if region has any available capacity blocks
+            has_any_available = any(r.available for r in results)
+            
+            if not has_any_available:
+                print()
+                print("  ⚠ No capacity blocks available in this region")
+                continue
+            
             print(f"{'Instance Type':<18} {'GPU':<8} {'Avail':<6} {'Start Date':<20} {'Dur':<6} {'Total Cost':<10} {'AZ (AZ-ID)':<16} {'Offering ID':<12}")
             print("-" * 100)
             
@@ -274,7 +288,7 @@ class TableFormatter:
         """
         print(f"BEST ON-DEMAND OPTIONS (Highest Availability + Competitive Price)")
         print("=" * TABLE_WIDTH_STANDARD)
-        print(f"{'Instance':<18} {'GPU':<12} {'Best Price':<12} {'Region':<12} {'Best AZ (AZ-ID) & Score':<30}")
+        print(f"{'Instance':<18} {'GPU':<12} {'Best Price':<12} {'Region':<12} {'AZ / Availability':<30}")
         print("-" * TABLE_WIDTH_STANDARD)
         
         for r in results:
@@ -290,4 +304,4 @@ class TableFormatter:
             print(f"{r.instance_type:<18} {r.gpu_type:<12} {price_str:<12} {region_str:<12} {az_str:<30}")
         
         print("\n" + "=" * TABLE_WIDTH_STANDARD)
-        print("Important: Shows highest availability option per instance type. Code selects highest spot score, with lowest price as tiebreaker.")
+        print("Important: Likelihood to launch - Likely = Decent chance | Possible = Low chance | Unlikely = Low to zero chance")

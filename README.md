@@ -171,40 +171,60 @@ p6-b300.48xlarge   8x B300  No        N/A                  N/A      N/A        N
 
 BEST ON-DEMAND OPTIONS (Highest Availability + Competitive Price)
 ====================================================================================
-Instance           GPU          Best Price   Region       Best AZ (AZ-ID) & Score       
+Instance           GPU          Best Price   Region       AZ / Availability             
 ------------------------------------------------------------------------------------
-p4d.24xlarge       8x A100      $21.9576     us-east-2    2b (use2-az2) Score:9         
-p4de.24xlarge      8x A100      $27.4471     us-east-1    1d (use1-az6) Score:9         
+p4d.24xlarge       8x A100      $21.9576     us-east-2    2b (use2-az2) Likely          
+p4de.24xlarge      8x A100      $27.4471     us-east-1    1d (use1-az6) Likely          
 p5.4xlarge         1x H100      N/A          Spot & CB Only N/A                           
 p5.48xlarge        8x H100      N/A          Spot & CB Only N/A                           
 p5e.48xlarge       8x H200      N/A          Spot & CB Only N/A                           
 p5en.48xlarge      8x H200      N/A          Spot & CB Only N/A                           
 p6-b200.48xlarge   8x B200      N/A          Spot & CB Only N/A                           
 p6-b300.48xlarge   8x B300      N/A          Spot & CB Only N/A                           
+
+====================================================================================
+Important: Likelihood to launch - Likely = Decent chance | Possible = Low chance | Unlikely = Low to zero chance
+
+Note: On-demand availability varies by region. Most P5+ instances are only available via Spot and Capacity Blocks.
 ```
 
 ## Supported Instance Types
 
-| Instance Type | GPU Type | GPU Count | GPU Memory | System Memory | CPU | Instance Store | Use Case |
-|---------------|----------|-----------|------------|---------------|-----|----------------|----------|
-| p4d.24xlarge | 8x A100 | 8 | 40GB each (320GB total) | 1152 GB | Intel Xeon Platinum 8275CL | 8 x 1000 GB NVMe SSD | Training, Inference |
-| p4de.24xlarge | 8x A100 | 8 | 80GB each (640GB total) | 1152 GB | Intel Xeon Platinum 8275CL | 8 x 1000 GB NVMe SSD | Training, Inference |
-| p5.48xlarge | 8x H100 | 8 | 80GB each (640GB total) | 2048 GB | AMD EPYC 7R13 | 8 x 3800 GB NVMe SSD | Large Model Training |
-| p5.4xlarge | 1x H100 | 1 | 80GB each (80GB total) | 192 GB | AMD EPYC 7R13 | 1 x 3800 GB NVMe SSD | Small-scale Training, Inference |
-| p5e.48xlarge | 8x H200 | 8 | 141GB each (1128GB total) | 2048 GB | AMD EPYC 7R13 | 8 x 3800 GB NVMe SSD | Large Model Training |
+| Instance Type | GPU Type | GPU Count | GPU Memory | CPU | System Memory | Instance Store |
+|---------------|----------|-----------|------------|-----|---------------|----------------|
+| p4d.24xlarge | 8x A100 | 8 | 40GB each (320GB total) | Intel Xeon Platinum 8275CL | 1152 GB | 8 x 1000 GB NVMe SSD |
+| p4de.24xlarge | 8x A100 | 8 | 80GB each (640GB total) | Intel Xeon Platinum 8275CL | 1152 GB | 8 x 1000 GB NVMe SSD |
+| p5.48xlarge | 8x H100 | 8 | 80GB each (640GB total) | AMD EPYC 7R13 | 2048 GB | 8 x 3800 GB NVMe SSD |
+| p5.4xlarge | 1x H100 | 1 | 80GB each (80GB total) | AMD EPYC 7R13 | 192 GB | 1 x 3800 GB NVMe SSD |
+| p5e.48xlarge | 8x H200 | 8 | 141GB each (1128GB total) | AMD EPYC 7R13 | 2048 GB | 8 x 3800 GB NVMe SSD |
 | p5en.48xlarge | 8x H200 | 8 | 141GB each (1128GB total) | 2048 GB | Intel Xeon Sapphire Rapids | 8 x 3800 GB NVMe SSD | Next-gen AI Workloads |
 | p6-b200.48xlarge | 8x B200 | 8 | 192GB each (1536GB total) | 2048 GB | Intel Xeon Emerald Rapids | 8 x 3800 GB NVMe SSD | Next-gen AI Workloads |
 | p6-b300.48xlarge | 8x B300 | 8 | 192GB each (1536GB total) | 4096 GB | Intel Xeon Emerald Rapids | 8 x 3800 GB NVMe SSD | Next-gen AI Workloads |
 
 ## Supported Regions
 
+**Americas:**
 - us-east-1 (N. Virginia)
 - us-east-2 (Ohio)
 - us-west-1 (N. California)
 - us-west-2 (Oregon)
+- ca-central-1 (Canada)
+- sa-east-1 (São Paulo)
+
+**Europe:**
+- eu-central-1 (Frankfurt)
+- eu-north-1 (Stockholm)
+- eu-south-2 (Spain)
+- eu-west-1 (Ireland)
+- eu-west-2 (London)
+- eu-west-3 (Paris)
+
+**Asia Pacific:**
 - ap-northeast-1 (Tokyo)
 - ap-northeast-2 (Seoul)
 - ap-south-1 (Mumbai)
+- ap-southeast-1 (Singapore)
+- ap-southeast-2 (Sydney)
 
 **Note**: Most H100-B300 instances (p5, p5e, p5en, p6-b200, p6-b300) are available via spot & capacity blocks only. **On-demand is primarily available for A100 instances (p4d, p4de)**.
 
